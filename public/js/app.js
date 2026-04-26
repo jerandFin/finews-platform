@@ -114,7 +114,7 @@ function buildFeaturedBanner(article) {
       <!-- Short description -->
       <p class="featured-description">${description}</p>
 
-      <!-- Read More button -->
+     <!-- Read More button -->
       
         class="featured-link"
         href="${article.url}"
