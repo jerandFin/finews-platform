@@ -69,29 +69,22 @@ function isArticleSaved(articleUrl) {
 
 
 // --- STEP 5: Build the Featured Banner ---
-// Takes the first article from the list and
-// displays it as a large visual hero banner
 
 function buildFeaturedBanner(article) {
 
-  // If no article is available, hide the banner
   if (!article) {
     featuredBanner.style.display = "none";
     return;
   }
 
-  // Use article image or a fallback placeholder
   const imageUrl = article.urlToImage ||
     "https://picsum.photos/seed/featured/1200/420";
 
-  // Use article description or a default message
   const description = article.description ||
     "Click to read the full story.";
 
-  // Build the banner HTML and inject it into the page
   featuredBanner.innerHTML = `
 
-    <!-- Full width background image -->
     <img
       class="featured-image"
       src="${imageUrl}"
@@ -99,23 +92,17 @@ function buildFeaturedBanner(article) {
       onerror="this.src='https://picsum.photos/seed/featured/1200/420'"
     />
 
-    <!-- Text overlay on top of the image -->
     <div class="featured-overlay">
 
-      <!-- Gold "Top Story" label -->
       <div class="featured-label">Top Story</div>
 
-      <!-- Source name -->
       <p class="featured-source">${article.source.name}</p>
 
-      <!-- Article headline -->
       <h2 class="featured-title">${article.title}</h2>
 
-      <!-- Short description -->
       <p class="featured-description">${description}</p>
 
-     <!-- Read More button -->
-      
+      <a
         class="featured-link"
         href="${article.url}"
         target="_blank"
@@ -127,7 +114,6 @@ function buildFeaturedBanner(article) {
     </div>
   `;
 
-  // Make the banner visible
   featuredBanner.style.display = "block";
 }
 
@@ -140,12 +126,11 @@ async function fetchNews(category = "business") {
   searchInput.value = "";
   clearBtn.style.display = "none";
 
-  // Hide banner while loading
   featuredBanner.style.display = "none";
 
   if (!window.isAutoRefreshing) loadingState.style.display = "block";
   errorState.style.display = "none";
-if (!window.isAutoRefreshing) articlesGrid.innerHTML = "";
+  if (!window.isAutoRefreshing) articlesGrid.innerHTML = "";
 
   try {
     const response = await fetch(`/news?category=${category}`);
@@ -155,14 +140,10 @@ if (!window.isAutoRefreshing) articlesGrid.innerHTML = "";
 
     if (data.status === "ok" && data.articles.length > 0) {
 
-      // Store all articles
       allArticles = data.articles;
 
-      // Use the first article as the featured banner
       buildFeaturedBanner(allArticles[0]);
 
-      // Display remaining articles as cards
-      // We skip index 0 because it's already in the banner
       allArticles.slice(1).forEach(article => {
         const card = createArticleCard(article);
         articlesGrid.appendChild(card);
@@ -189,7 +170,6 @@ function searchArticles() {
   const keyword = searchInput.value.trim().toLowerCase();
   if (!keyword) return;
 
-  // Hide banner during search
   featuredBanner.style.display = "none";
 
   clearBtn.style.display = "inline-block";
@@ -264,7 +244,6 @@ function displayReadingList() {
   searchInput.value = "";
   clearBtn.style.display = "none";
 
-  // Hide banner on reading list view
   featuredBanner.style.display = "none";
 
   const saved = getSavedArticles();
@@ -333,7 +312,7 @@ function createArticleCard(article, isSavedView = false) {
         <span class="article-date">${formattedPublishDate}</span>
         <div style="display:flex; gap:8px; align-items:center;">
           ${actionButton}
-          
+          <a
             class="article-link"
             href="${article.url}"
             target="_blank"
@@ -389,6 +368,8 @@ navButtons.forEach(button => {
 // --- STEP 13: Load business news on startup ---
 
 fetchNews("business");
+
+
 // ════════════════════════════════════════
 //   AUTO REFRESH MODULE
 // ════════════════════════════════════════
@@ -442,9 +423,9 @@ const AutoRefresh = (() => {
   async function doRefresh() {
     showSpinning();
     try {
-    window.isAutoRefreshing = true;
-await fetchNews(currentCategory);
-window.isAutoRefreshing = false; 
+      window.isAutoRefreshing = true;
+      await fetchNews(currentCategory);
+      window.isAutoRefreshing = false;
       updateLastUpdatedText();
       resetCountdown();
       highlightNewArticles();
