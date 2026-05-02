@@ -88,9 +88,8 @@ async function fetchNews(category = "business") {
   if (articlesGrid) articlesGrid.innerHTML = "";
 
   try {
-    // FIX: Using absolute path '/news' instead of relative 'news'
-    // This ensures it works whether you are at / or /quiz
-    const response = await fetch(`/news?category=${category}`);
+    // THE FIX: Changed from '/news' to '/api/news' to match your server.js
+    const response = await fetch(`/api/news?category=${category}`);
     const data = await response.json();
 
     if (loadingState) loadingState.style.display = "none";
