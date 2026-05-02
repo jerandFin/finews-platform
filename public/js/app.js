@@ -1,6 +1,5 @@
 // ============================================
-// app.js — FinNews Platform Brain
-// Updated for root directory structure
+// app.js — FinNews Platform Frontend
 // ============================================
 
 // --- STEP 1: Connect to page elements ---
@@ -84,11 +83,12 @@ async function fetchNews(category = "business") {
   if (clearBtn) clearBtn.style.display = "none";
   if (featuredBanner) featuredBanner.style.display = "none";
 
-  if (!window.isAutoRefreshing && loadingState) loadingState.style.display = "block";
+  if (loadingState) loadingState.style.display = "block";
   if (errorState) errorState.style.display = "none";
-  if (!window.isAutoRefreshing && articlesGrid) articlesGrid.innerHTML = "";
+  if (articlesGrid) articlesGrid.innerHTML = "";
 
   try {
+    // Note: This calls YOUR backend server
     const response = await fetch(`/news?category=${category}`);
     const data = await response.json();
 
@@ -101,8 +101,8 @@ async function fetchNews(category = "business") {
         const card = createArticleCard(article);
         articlesGrid.appendChild(card);
       });
-    } else if (errorState) {
-      errorState.style.display = "block";
+    } else {
+      if (errorState) errorState.style.display = "block";
     }
   } catch (error) {
     if (loadingState) loadingState.style.display = "none";
@@ -167,11 +167,11 @@ function createArticleCard(article, isSavedView = false) {
 
 // --- STEP 8: Navigation Logic ---
 navButtons.forEach(button => {
-  button.addEventListener("click", () => {
-    // 1. If it's a direct link (like the Quiz), don't run news logic
-    if (button.tagName === 'A') return;
+  button.addEventListener("click", (e) => {
+    // If it's a real <a> link (like the Quiz button), let the browser follow it
+    if (button.tagName === 'A' || button.closest('a')) return;
 
-    // 2. Otherwise, handle category switching
+    e.preventDefault();
     navButtons.forEach(btn => btn.classList.remove("active"));
     button.classList.add("active");
     
@@ -190,7 +190,7 @@ function displayReadingList() {
   const saved = getSavedArticles();
 
   if (saved.length === 0) {
-    articlesGrid.innerHTML = `<div class="empty-list"><h3>Empty List</h3><p>Save articles to see them here.</p></div>`;
+    articlesGrid.innerHTML = `<div class="empty-list" style="grid-column: 1/-1; text-align:center; padding: 50px;"><h3>No saved articles</h3><p>Click "Save" on news items to see them here.</p></div>`;
     return;
   }
   saved.forEach(article => articlesGrid.appendChild(createArticleCard(article, true)));
@@ -204,8 +204,20 @@ if (searchBtn) {
     searchBtn.addEventListener("click", () => {
         const keyword = searchInput.value.trim().toLowerCase();
         if (!keyword) return;
+        
+        // Filter current loaded articles
+        const results = allArticles.filter(a => 
+          a.title.toLowerCase().includes(keyword) || 
+          (a.description && a.description.toLowerCase().includes(keyword))
+        );
+
         articlesGrid.innerHTML = "";
-        const results = allArticles.filter(a => a.title.toLowerCase().includes(keyword));
-        results.forEach(a => articlesGrid.appendChild(createArticleCard(a)));
+        if (featuredBanner) featuredBanner.style.display = "none";
+
+        if (results.length === 0) {
+          articlesGrid.innerHTML = `<p style="grid-column: 1/-1; text-align:center;">No results found for "${keyword}"</p>`;
+        } else {
+          results.forEach(a => articlesGrid.appendChild(createArticleCard(a)));
+        }
     });
 }
