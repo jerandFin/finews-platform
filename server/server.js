@@ -21,12 +21,19 @@ app.get("/quiz", (req, res) => {
 });
 
 // --- FIX 2: Secure AI Route ---
+// --- FIX 2: Secure AI Route ---
 // This moves the Claude API call to the server to hide your API Key
 app.post("/api/quiz", async (req, res) => {
   const { topics, count } = req.body;
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; 
 
-  const prompt = `Generate exactly ${count} multiple choice quiz questions about: ${topics}. Return ONLY a raw JSON array.`;
+  // The prompt is now safely stored on your server
+  const prompt = `Generate exactly ${count} multiple choice quiz questions about: ${topics}.
+  
+  Rules:
+  - Cover all selected topics evenly.
+  - Mix difficulty: 30% easy, 50% medium, 20% hard.
+  - Return ONLY a valid JSON array. No markdown, no backticks.`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -44,14 +51,12 @@ app.post("/api/quiz", async (req, res) => {
     });
 
     const data = await response.json();
-    // Send just the JSON quiz data back to the browser
-    res.json(data);
+    res.json(data); 
   } catch (error) {
     console.error("AI Error:", error);
     res.status(500).json({ error: "Failed to generate quiz." });
   }
 });
-
 // --- Existing News Route ---
 app.get("/news", async (req, res) => {
   const API_KEY = process.env.NEWS_API_KEY;
