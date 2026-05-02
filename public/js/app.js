@@ -88,13 +88,15 @@ async function fetchNews(category = "business") {
   if (articlesGrid) articlesGrid.innerHTML = "";
 
   try {
-    // Note: This calls YOUR backend server
+    // FIX: Using absolute path '/news' instead of relative 'news'
+    // This ensures it works whether you are at / or /quiz
     const response = await fetch(`/news?category=${category}`);
     const data = await response.json();
 
     if (loadingState) loadingState.style.display = "none";
 
-    if (data.status === "ok" && data.articles.length > 0) {
+    // Standardized check for data.articles existence
+    if (data.articles && data.articles.length > 0) {
       allArticles = data.articles;
       buildFeaturedBanner(allArticles[0]);
       allArticles.slice(1).forEach(article => {
@@ -144,23 +146,26 @@ function createArticleCard(article, isSavedView = false) {
   `;
 
   const btnClass = isSavedView ? ".remove-btn" : ".bookmark-btn";
-  card.querySelector(btnClass).addEventListener("click", () => {
-    if (isSavedView) {
-      removeArticle(article.url);
-      displayReadingList();
-    } else {
-      const btn = card.querySelector(".bookmark-btn");
-      if (isArticleSaved(article.url)) {
+  const btnElement = card.querySelector(btnClass);
+  
+  if (btnElement) {
+    btnElement.addEventListener("click", () => {
+      if (isSavedView) {
         removeArticle(article.url);
-        btn.textContent = "Save";
-        btn.classList.remove("saved");
+        displayReadingList();
       } else {
-        saveArticle(article);
-        btn.textContent = "✓ Saved";
-        btn.classList.add("saved");
+        if (isArticleSaved(article.url)) {
+          removeArticle(article.url);
+          btnElement.textContent = "Save";
+          btnElement.classList.remove("saved");
+        } else {
+          saveArticle(article);
+          btnElement.textContent = "✓ Saved";
+          btnElement.classList.add("saved");
+        }
       }
-    }
-  });
+    });
+  }
 
   return card;
 }
@@ -168,8 +173,10 @@ function createArticleCard(article, isSavedView = false) {
 // --- STEP 8: Navigation Logic ---
 navButtons.forEach(button => {
   button.addEventListener("click", (e) => {
-    // If it's a real <a> link (like the Quiz button), let the browser follow it
-    if (button.tagName === 'A' || button.closest('a')) return;
+    // Check if it's the Quiz link or button
+    if (button.getAttribute("href") === "/quiz" || button.classList.contains("quiz-nav-btn")) {
+      return; // Let the browser handle the navigation to the quiz page
+    }
 
     e.preventDefault();
     navButtons.forEach(btn => btn.classList.remove("active"));
@@ -178,13 +185,14 @@ navButtons.forEach(button => {
     const category = button.getAttribute("data-category");
     if (category === "saved") {
       displayReadingList();
-    } else {
+    } else if (category) {
       fetchNews(category);
     }
   });
 });
 
 function displayReadingList() {
+  if (!articlesGrid) return;
   articlesGrid.innerHTML = "";
   if (featuredBanner) featuredBanner.style.display = "none";
   const saved = getSavedArticles();
@@ -197,15 +205,17 @@ function displayReadingList() {
 }
 
 // --- STEP 9: Initialize ---
-fetchNews("business");
+// Only fetch news if we are on the main news grid page
+if (articlesGrid) {
+  fetchNews("business");
+}
 
 // --- STEP 10: Search Support ---
-if (searchBtn) {
+if (searchBtn && searchInput) {
     searchBtn.addEventListener("click", () => {
         const keyword = searchInput.value.trim().toLowerCase();
         if (!keyword) return;
         
-        // Filter current loaded articles
         const results = allArticles.filter(a => 
           a.title.toLowerCase().includes(keyword) || 
           (a.description && a.description.toLowerCase().includes(keyword))
