@@ -8,8 +8,8 @@ const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
 
-// --- THE MAPPING LOGIC (UPDATED) ---
-// This tells the server to look inside the 'public' folder for your JS and CSS
+// --- THE MAPPING LOGIC ---
+// This allows index.html to find /public/js/apps.js and /public/css/styles.css
 app.use("/public", express.static(path.join(__dirname, "public")));
 
 // --- SERVE HTML FROM ROOT ---
@@ -22,16 +22,25 @@ app.get("/quiz", (req, res) => {
 });
 
 // --- NEWS API ROUTE ---
-// Adding this to make sure your news actually generates!
 app.get("/api/news", async (req, res) => {
   const category = req.query.category || "business";
-  const NEWS_API_KEY = process.env.NEWS_API_KEY; 
+  // CRITICAL: Ensure this variable name matches your Render Dashboard Key exactly
+  const API_KEY = process.env.NEWS_API_KEY; 
   
   try {
-    const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${NEWS_API_KEY}`);
+    const url = `https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${API_KEY}`;
+    const response = await fetch(url);
     const data = await response.json();
+    
+    // If NewsAPI sends an error (like an invalid key), send it to the frontend console
+    if (data.status === "error") {
+      console.error("NewsAPI Error:", data.message);
+      return res.status(401).json({ error: data.message });
+    }
+    
     res.json(data);
   } catch (error) {
+    console.error("Server Fetch Error:", error);
     res.status(500).json({ error: "Failed to fetch news" });
   }
 });
