@@ -1,39 +1,44 @@
 // ============================================
-// server.js — Updated with Quiz Logic
+// server.js — Optimized for Render Deployment
 // ============================================
 
-require("dotenv").config({ path: "./server/.env" });
+require("dotenv").config(); // Looks for .env in the root folder
 const express = require("express");
-const path = require("path"); // Add this for file paths
+const path = require("path");
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+// --- FIX 1: Port Binding for Render ---
+// Render specifically looks for process.env.PORT
+const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
-app.use(express.static("public")); 
 
-// --- FIX 1: Serve the Quiz Page ---
-// This resolves "Cannot GET /quiz.html"
-app.get("/quiz", (req, res) => {
-  res.sendFile(path.join(__dirname, "../quiz.html"));
+// --- FIX 2: Static File Serving ---
+// This tells the server to serve EVERYTHING (HTML, CSS, JS) from the 'public' folder
+app.use(express.static(path.join(__dirname, "public")));
+
+// --- FIX 3: Explicit Routes for HTML ---
+// Landing Page
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// --- FIX 2: Secure AI Route ---
-// --- FIX 2: Secure AI Route ---
-// This moves the Claude API call to the server to hide your API Key
+// Quiz Page (Resolves "Cannot GET /quiz")
+app.get("/quiz", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "quiz.html"));
+});
+
+// --- FIX 4: Secure AI Route ---
 app.post("/api/quiz", async (req, res) => {
   const { topics, count } = req.body;
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; 
 
-  // The prompt is now safely stored on your server
   const prompt = `Generate exactly ${count} multiple choice quiz questions about: ${topics}.
-  
-  Rules:
-  - Cover all selected topics evenly.
-  - Mix difficulty: 30% easy, 50% medium, 20% hard.
-  - Return ONLY a valid JSON array. No markdown, no backticks.`;
+  Return ONLY a valid JSON array. No markdown, no backticks.
+  Format: [{"question": "...", "options": ["A", "B", "C", "D"], "answer": "..."}]`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -57,7 +62,8 @@ app.post("/api/quiz", async (req, res) => {
     res.status(500).json({ error: "Failed to generate quiz." });
   }
 });
-// --- Existing News Route ---
+
+// --- News Route ---
 app.get("/news", async (req, res) => {
   const API_KEY = process.env.NEWS_API_KEY;
   const category = req.query.category || "business";
@@ -72,6 +78,7 @@ app.get("/news", async (req, res) => {
   }
 });
 
+// Start Server
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
