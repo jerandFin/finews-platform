@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   index.html — The main page of your news platform
-  This file defines the STRUCTURE of everything you see.
+  Updated for Root Structure and Clean Routing
 -->
 <html lang="en">
 
@@ -14,10 +14,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- 
-    FIX 1: Updated CSS Path 
-    Since your style.css is inside a folder named 'css' 
+    FIX 1: Absolute CSS Path 
+    Leading slash ensures it hits the '/css' route defined in server.js
   -->
- <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 
 <body>
@@ -41,8 +41,11 @@
       <button class="nav-btn" data-category="health">Health</button>
       <button class="nav-btn" id="reading-list-btn" data-category="saved">📑 Reading List</button>
 
-      <!-- Quiz link stays as quiz.html since it's in the same folder -->
-      <a href="quiz.html" class="nav-btn quiz-nav-btn">🎯 Quiz</a>
+      <!-- 
+        FIX 2: Updated Quiz Link
+        Changed from 'quiz.html' to '/quiz' to match the server route
+      -->
+      <a href="/quiz" class="nav-btn quiz-nav-btn">🎯 Quiz</a>
     </div>
   </nav>
 
@@ -90,10 +93,10 @@
   </footer>
 
   <!-- 
-    FIX 2: Updated JS Path 
-    Points to the 'js' folder sitting next to this file
+    FIX 3: Absolute JS Path 
+    Leading slash matches the '/js' route defined in server.js
   -->
-  <script src="js/app.js"></script>
+  <script src="/js/app.js"></script>
 
 </body>
 </html>
