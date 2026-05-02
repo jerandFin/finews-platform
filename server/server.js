@@ -1,63 +1,72 @@
 // ============================================
-// server.js — FinNews Platform Server
-// Now using REAL data from NewsAPI
+// server.js — Updated with Quiz Logic
 // ============================================
 
-
-// --- Load tools ---
 require("dotenv").config({ path: "./server/.env" });
 const express = require("express");
+const path = require("path"); // Add this for file paths
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const app = express();
 const PORT = 3000;
 
+app.use(express.json());
+app.use(express.static("public")); 
 
-// --- Allow browser to talk to server ---
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  next();
+// --- FIX 1: Serve the Quiz Page ---
+// This resolves "Cannot GET /quiz.html"
+app.get("/quiz", (req, res) => {
+  res.sendFile(path.join(__dirname, "../quiz.html"));
 });
 
-app.use(express.json());
-app.use(express.static("public"));
+// --- FIX 2: Secure AI Route ---
+// This moves the Claude API call to the server to hide your API Key
+app.post("/api/quiz", async (req, res) => {
+  const { topics, count } = req.body;
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; 
 
-
-// --- The news route ---
-// Fetches real live articles from NewsAPI
-app.get("/news", async (req, res) => {
-
-  // Read your secret API key from the .env file
-  const API_KEY = process.env.NEWS_API_KEY;
-
-  // Read which category the browser is asking for
-  const category = req.query.category || "business";
-
-  // Build the NewsAPI request URL
-  const url = `https://newsapi.org/v2/top-headlines?category=${category}&language=en&sortBy=publishedAt&apiKey=${API_KEY}`;
+  const prompt = `Generate exactly ${count} multiple choice quiz questions about: ${topics}. Return ONLY a raw JSON array.`;
 
   try {
-    // Contact NewsAPI and wait for real articles
-    const response = await fetch(url);
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-3-sonnet-20240229",
+        max_tokens: 2000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
 
-    // Convert the response into usable data
     const data = await response.json();
-
-    // Send the real articles back to your browser
+    // Send just the JSON quiz data back to the browser
     res.json(data);
-
   } catch (error) {
-    console.error("Error fetching news:", error);
-    res.status(500).json({ error: "Failed to fetch news." });
+    console.error("AI Error:", error);
+    res.status(500).json({ error: "Failed to generate quiz." });
   }
-
 });
 
+// --- Existing News Route ---
+app.get("/news", async (req, res) => {
+  const API_KEY = process.env.NEWS_API_KEY;
+  const category = req.query.category || "business";
+  const url = `https://newsapi.org/v2/top-headlines?category=${category}&language=en&apiKey=${API_KEY}`;
 
-// --- Start the server ---
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch news." });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`✅ Server is running at http://localhost:${PORT}`);
-  console.log(`🌍 Now fetching REAL articles from NewsAPI`);
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
