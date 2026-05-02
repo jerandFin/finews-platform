@@ -1,90 +1,63 @@
 <!DOCTYPE html>
-<!--
-  index.html — The main page of your news platform
-  This file defines the STRUCTURE of everything you see.
-  The actual content (articles) gets inserted by app.js
-  automatically when the page loads.
--->
 <html lang="en">
 
 <head>
-  <!-- Tells the browser how to read characters like $ and % -->
   <meta charset="UTF-8">
-
-  <!-- Makes the page look correct on mobile screens -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- The title that appears on the browser tab -->
   <title>FinNews — Financial News Platform</title>
 
-  <!-- Loads a professional font from Google (no download needed) -->
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
-  <!-- Loads your stylesheet that controls all the visual design -->
   <link rel="stylesheet" href="css/styles.css">
+
+  <!-- ADD THIS CSS BLOCK TO STYLE YOUR QUIZ BUTTON -->
+  <style>
+    .quiz-nav-item {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: #F5C842; /* Your gold theme */
+      color: #000 !important;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all 0.2s;
+      margin-left: 12px;
+    }
+    .quiz-nav-item:hover {
+      background: #C9960A;
+      transform: translateY(-2px);
+    }
+  </style>
 </head>
 
 <body>
 
-  <!-- ============================================
-    HEADER — The top bar of your platform
-    Contains the logo and the current date
-  ============================================ -->
   <header class="site-header">
     <div class="header-inner">
-
-      <!-- Left side: Logo and tagline -->
       <div class="header-brand">
         <h1 class="logo">FinNews</h1>
         <p class="tagline">Markets • Business • Economy</p>
-<p class="tagline">Jerand Lau</p>
+        <p class="tagline">Jerand Lau</p>
       </div>
-
-      <!-- Right side: Live date display -->
-      <!-- This gets filled in automatically by app.js -->
       <div class="header-date" id="current-date"></div>
-
     </div>
   </header>
 
-
-  <!-- ============================================
-    NAVIGATION — Category filter buttons
-    Clicking each button filters articles by topic
-  ============================================ -->
-<!-- ============================================
-    NAVIGATION — Category filter buttons
-  ============================================ -->
+  <!-- CLEANED UP NAVIGATION (Removed duplication) -->
   <nav class="category-nav">
     <div class="nav-inner">
-
-      <!-- News Category Buttons -->
       <button class="nav-btn active" data-category="business">Business</button>
       <button class="nav-btn" data-category="technology">Technology</button>
       <button class="nav-btn" data-category="science">Science</button>
       <button class="nav-btn" data-category="health">Health</button>
-      
-      <!-- Fixed the typo below (removed the extra '<') -->
       <button class="nav-btn" id="reading-list-btn" data-category="saved">📑 Reading List</button>
-
-      <!-- NEW: Link to the AI Quiz Page -->
-      <!-- This must use /quiz to match your server.js route -->
-      <a href="/quiz" class="nav-btn quiz-nav-item">✦ Finance Quiz</a>
-
-    </div>
-  </nav>  
-    <div class="nav-inner">
-
-      <!-- Each button has a "data-category" tag -->
-      <!-- app.js reads that tag to know what to fetch -->
-      <button class="nav-btn active" data-category="business">Business</button>
-      <button class="nav-btn" data-category="technology">Technology</button>
-      <button class="nav-btn" data-category="science">Science</button>
-      <button class="nav-btn" data-category="health">Health</button>
-      <<button class="nav-btn" id="reading-list-btn" data-category="saved">📑 Reading List</button>
-
+      
+      <!-- Secure Link to the Quiz -->
+      <a href="/quiz" class="quiz-nav-item">✦ Finance Quiz</a>
     </div>
   </nav>
+  
 <!-- AUTO REFRESH STATUS BAR -->
 <div id="refresh-status" class="refresh-status">
   <span id="last-updated-text">Last updated: just now</span>
