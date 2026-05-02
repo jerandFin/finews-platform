@@ -6,80 +6,85 @@
   automatically when the page loads.
 -->
 <html lang="en">
-
+ 
 <head>
   <!-- Tells the browser how to read characters like $ and % -->
   <meta charset="UTF-8">
-
+ 
   <!-- Makes the page look correct on mobile screens -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+ 
   <!-- The title that appears on the browser tab -->
   <title>FinNews — Financial News Platform</title>
-
+ 
   <!-- Loads a professional font from Google (no download needed) -->
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
+ 
   <!-- Loads your stylesheet that controls all the visual design -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
-
+ 
 <body>
-
+ 
   <!-- ============================================
     HEADER — The top bar of your platform
     Contains the logo and the current date
   ============================================ -->
   <header class="site-header">
     <div class="header-inner">
-
+ 
       <!-- Left side: Logo and tagline -->
       <div class="header-brand">
         <h1 class="logo">FinNews</h1>
         <p class="tagline">Markets • Business • Economy</p>
-<p class="tagline">Jerand Lau</p>
+        <p class="tagline">Jerand Lau</p>
       </div>
-
+ 
       <!-- Right side: Live date display -->
       <!-- This gets filled in automatically by app.js -->
       <div class="header-date" id="current-date"></div>
-
+ 
     </div>
   </header>
-
-
+ 
+ 
   <!-- ============================================
     NAVIGATION — Category filter buttons
     Clicking each button filters articles by topic
   ============================================ -->
   <nav class="category-nav">
     <div class="nav-inner">
-
+ 
       <!-- Each button has a "data-category" tag -->
       <!-- app.js reads that tag to know what to fetch -->
       <button class="nav-btn active" data-category="business">Business</button>
       <button class="nav-btn" data-category="technology">Technology</button>
       <button class="nav-btn" data-category="science">Science</button>
       <button class="nav-btn" data-category="health">Health</button>
-      <<button class="nav-btn" id="reading-list-btn" data-category="saved">📑 Reading List</button>
-
+      <button class="nav-btn" id="reading-list-btn" data-category="saved">📑 Reading List</button>
+ 
+      <!-- NEW: Quiz tab button -->
+      <a href="quiz.html" class="nav-btn quiz-nav-btn">🎯 Quiz</a>
+ 
     </div>
   </nav>
-<!-- AUTO REFRESH STATUS BAR -->
-<div id="refresh-status" class="refresh-status">
-  <span id="last-updated-text">Last updated: just now</span>
-  <span class="refresh-divider">·</span>
-  <span id="next-refresh-text">Refreshing in 5:00</span>
-  <button id="manual-refresh-btn" title="Refresh now">
-    <span id="refresh-icon">↻</span> Refresh Now
-  </button>
-</div>
-<!-- ============================================
+ 
+  <!-- AUTO REFRESH STATUS BAR -->
+  <div id="refresh-status" class="refresh-status">
+    <span id="last-updated-text">Last updated: just now</span>
+    <span class="refresh-divider">·</span>
+    <span id="next-refresh-text">Refreshing in 5:00</span>
+    <button id="manual-refresh-btn" title="Refresh now">
+      <span id="refresh-icon">↻</span> Refresh Now
+    </button>
+  </div>
+ 
+  <!-- ============================================
     SEARCH BAR — Keyword article search
   ============================================ -->
   <div class="search-section">
     <div class="search-inner">
-
+ 
       <!-- The text input where user types keywords -->
       <input
         type="text"
@@ -87,77 +92,80 @@
         class="search-input"
         placeholder="Search headlines... (e.g. Tesla, inflation, Fed)"
       />
-
+ 
       <!-- Search button -->
       <button class="search-btn" id="search-btn">Search</button>
-
+ 
       <!-- Clear button — resets search results -->
       <button class="clear-btn" id="clear-btn" style="display:none;">
         ✕ Clear
       </button>
-
+ 
     </div>
   </div>
+ 
   <!-- ============================================
     MAIN CONTENT — Where articles are displayed
   ============================================ -->
   <main class="main-content">
-
+ 
     <!-- This message shows while articles are loading -->
     <div class="loading-state" id="loading">
-  <div class="skeleton-grid">
-    <div class="skeleton-card">
-      <div class="skeleton skeleton-image"></div>
-      <div class="skeleton skeleton-title"></div>
-      <div class="skeleton skeleton-line"></div>
-      <div class="skeleton skeleton-line short"></div>
+      <div class="skeleton-grid">
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-image"></div>
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line short"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-image"></div>
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line short"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-image"></div>
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line short"></div>
+        </div>
+      </div>
     </div>
-    <div class="skeleton-card">
-      <div class="skeleton skeleton-image"></div>
-      <div class="skeleton skeleton-title"></div>
-      <div class="skeleton skeleton-line"></div>
-      <div class="skeleton skeleton-line short"></div>
-    </div>
-    <div class="skeleton-card">
-      <div class="skeleton skeleton-image"></div>
-      <div class="skeleton skeleton-title"></div>
-      <div class="skeleton skeleton-line"></div>
-      <div class="skeleton skeleton-line short"></div>
-    </div>
-  </div>
-</div>
-
+ 
     <!-- This message shows if something goes wrong -->
     <div class="error-state" id="error" style="display:none;">
       <p>Unable to load news. Please try again.</p>
     </div>
-<!-- ============================================
+ 
+    <!-- ============================================
       FEATURED HEADLINE BANNER
       Automatically displays the top story
       as a large visual banner
     ============================================ -->
     <div class="featured-banner" id="featured-banner"></div>
-    <!-- 
+ 
+    <!--
       This is the grid where article cards appear.
       It starts empty — app.js fills it with articles
       automatically when the page loads.
     -->
     <div class="articles-grid" id="articles-grid"></div>
-
+ 
   </main>
-
-
+ 
+ 
   <!-- ============================================
     FOOTER — Bottom of the page
   ============================================ -->
   <footer class="site-footer">
     <p>© 2026 FinNews Platform · Built by Jerand Lau · Data provided by NewsAPI</p>
   </footer>
-
-
+ 
+ 
   <!-- Loads your JavaScript file last -->
   <!-- It must be at the bottom so the page loads before the script runs -->
   <script src="js/app.js"></script>
-
+ 
 </body>
 </html>
