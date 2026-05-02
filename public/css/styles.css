@@ -1,3 +1,24 @@
+/* --- THE MISSING VARIABLES --- */
+:root {
+  --color-primary: #1a1a1a;    /* Deep dark for header */
+  --color-accent: #d4af37;     /* Gold/Accent color */
+  --color-surface: #ffffff;    /* Background of nav */
+  --color-border: #e0e0e0;     /* Light lines */
+  --color-muted: #666666;      /* Gray text for inactive tabs */
+  --color-text: #333333;       /* Main text color */
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+/* --- GLOBAL STYLES --- */
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: #f9f9f9;
+}
+
+/* ... keep the rest of your code below this ... */
 /* --- HEADER & NAVIGATION --- */
 .site-header {
   background-color: var(--color-primary);
