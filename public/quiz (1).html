@@ -357,8 +357,58 @@
  
   async function generateQuestions() {
     const topicStr = selectedTopics.join(', ');
-    const prompt = `Generate exactly ${questionCount} multiple choice quiz questions about: ${topicStr}.
- 
+    
+    try {
+      // 1. Call your OWN server instead of Anthropic directly
+      const response = await fetch("/api/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topics: topicStr,
+          count: questionCount
+        })
+      });
+
+      if (!response.ok) throw new Error("Server failed to generate quiz");
+
+      const data = await response.json();
+      
+      // 2. Extract and clean the text content from the AI response
+      const rawText = data.content[0].text.trim();
+      // Removes any Markdown code blocks if the AI includes them
+      const cleanJson = rawText.replace(/
+```json|```/g, '').trim();
+      
+      // 3. Parse the cleaned string into a real JavaScript array
+      questions = JSON.parse(cleanJson);
+
+      if (!Array.isArray(questions) || questions.length === 0) {
+        throw new Error("The AI did not return a valid list of questions.");
+      }
+
+      // 4. Initialize quiz state and UI
+      current = 0; 
+      score = 0; 
+      streak = 0; 
+      bestStreak = 0; 
+      wrongCount = 0;
+      
+      showScreen('screen-quiz');
+      document.getElementById('quiz-topic-badge').textContent = selectedTopics.join(' · ');
+      
+      // 5. Start the first question
+      showQuestion();
+
+    } catch (err) {
+      console.error("Quiz Initialization Error:", err);
+      showScreen('screen-topics');
+      
+      // Provide a helpful error message in the UI
+      const errorBox = document.getElementById('topic-error');
+      errorBox.textContent = 'Failed to load quiz. Please check that your API key is set in Render.';
+      errorBox.style.display = 'block';
+    }
+  }
 Rules:
 - Cover all selected topics evenly
 - Each question must be educational and accurate
