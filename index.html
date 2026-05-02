@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   index.html — The main page of your news platform
-  Updated for Root Structure and Clean Routing
+  Updated for Nested Public Structure
 -->
 <html lang="en">
 
@@ -14,10 +14,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- 
-    FIX 1: Absolute CSS Path 
-    Leading slash ensures it hits the '/css' route defined in server.js
+    NESTED CSS PATH FIX: 
+    Since styles.css is inside /public/css/, we must include /public/
   -->
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/public/css/styles.css">
 </head>
 
 <body>
@@ -41,10 +41,6 @@
       <button class="nav-btn" data-category="health">Health</button>
       <button class="nav-btn" id="reading-list-btn" data-category="saved">📑 Reading List</button>
 
-      <!-- 
-        FIX 2: Updated Quiz Link
-        Changed from 'quiz.html' to '/quiz' to match the server route
-      -->
       <a href="/quiz" class="nav-btn quiz-nav-btn">🎯 Quiz</a>
     </div>
   </nav>
@@ -88,14 +84,13 @@
     <div class="articles-grid" id="articles-grid"></div>
   </main>
 
- <footer class="site-footer">
+  <footer class="site-footer">
     <p>© 2026 FinNews Platform · Built by Jerand Lau · Data provided by NewsAPI</p>
   </footer>
 
   <!-- 
     PRECISION PATH FIX: 
-    1. Points to 'public/js/' based on your folder structure in image_86677b.jpg.
-    2. References 'apps.js' verbatim per your confirmation.
+    Points to /public/js/apps.js as seen in your GitHub structure.
   -->
   <script src="/public/js/apps.js"></script>
 
