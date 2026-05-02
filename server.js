@@ -9,16 +9,13 @@ const PORT = process.env.PORT || 10000;
 app.use(express.json());
 
 // --- THE MAPPING LOGIC ---
-// This allows index.html to find /public/js/apps.js and /public/css/styles.css
+// This tells the server that whenever the HTML asks for something starting with "/public", 
+// it should look inside the actual 'public' folder in your directory.
 app.use("/public", express.static(path.join(__dirname, "public")));
 
 // --- SERVE HTML FROM ROOT ---
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
-});
-
-app.get("/quiz", (req, res) => {
-  res.sendFile(path.join(__dirname, "quiz.html"));
 });
 
 // --- NEWS API ROUTE ---
