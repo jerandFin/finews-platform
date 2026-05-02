@@ -52,7 +52,27 @@
     NAVIGATION — Category filter buttons
     Clicking each button filters articles by topic
   ============================================ -->
+<!-- ============================================
+    NAVIGATION — Category filter buttons
+  ============================================ -->
   <nav class="category-nav">
+    <div class="nav-inner">
+
+      <!-- News Category Buttons -->
+      <button class="nav-btn active" data-category="business">Business</button>
+      <button class="nav-btn" data-category="technology">Technology</button>
+      <button class="nav-btn" data-category="science">Science</button>
+      <button class="nav-btn" data-category="health">Health</button>
+      
+      <!-- Fixed the typo below (removed the extra '<') -->
+      <button class="nav-btn" id="reading-list-btn" data-category="saved">📑 Reading List</button>
+
+      <!-- NEW: Link to the AI Quiz Page -->
+      <!-- This must use /quiz to match your server.js route -->
+      <a href="/quiz" class="nav-btn quiz-nav-item">✦ Finance Quiz</a>
+
+    </div>
+  </nav>  
     <div class="nav-inner">
 
       <!-- Each button has a "data-category" tag -->
