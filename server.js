@@ -1,8 +1,8 @@
 // ============================================
-// server.js — Optimized for Render Deployment
+// server.js — Final Root-Structure Logic
 // ============================================
 
-require("dotenv").config(); // Looks for .env in the root folder
+require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const fetch = (...args) =>
@@ -10,28 +10,42 @@ const fetch = (...args) =>
 
 const app = express();
 
-// --- FIX 1: Port Binding for Render ---
-// Render specifically looks for process.env.PORT
+// --- STEP 1: Port Binding for Render ---
 const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
 
-// --- FIX 2: Static File Serving ---
-// This tells the server to serve EVERYTHING (HTML, CSS, JS) from the 'public' folder
-app.use(express.static(path.join(__dirname, "public")));
+// --- STEP 2: Link your Styles and Scripts ---
+// This tells the HTML files to find the CSS and JS inside the public folder
+app.use("/css", express.static(path.join(__dirname, "public/css")));
+app.use("/js", express.static(path.join(__dirname, "public/js")));
 
-// --- FIX 3: Explicit Routes for HTML ---
-// Landing Page
+// --- STEP 3: Serve HTML from the Root ---
+// These match your current file locations on GitHub
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// Quiz Page (Resolves "Cannot GET /quiz")
 app.get("/quiz", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "quiz.html"));
+  res.sendFile(path.join(__dirname, "quiz.html"));
 });
 
-// --- FIX 4: Secure AI Route ---
+// --- STEP 4: News API Route ---
+app.get("/news", async (req, res) => {
+  const API_KEY = process.env.NEWS_API_KEY;
+  const category = req.query.category || "business";
+  const url = `https://newsapi.org/v2/top-headlines?category=${category}&language=en&apiKey=${API_KEY}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch news." });
+  }
+});
+
+// --- STEP 5: Secure AI Quiz Route ---
 app.post("/api/quiz", async (req, res) => {
   const { topics, count } = req.body;
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY; 
@@ -60,21 +74,6 @@ app.post("/api/quiz", async (req, res) => {
   } catch (error) {
     console.error("AI Error:", error);
     res.status(500).json({ error: "Failed to generate quiz." });
-  }
-});
-
-// --- News Route ---
-app.get("/news", async (req, res) => {
-  const API_KEY = process.env.NEWS_API_KEY;
-  const category = req.query.category || "business";
-  const url = `https://newsapi.org/v2/top-headlines?category=${category}&language=en&apiKey=${API_KEY}`;
-
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch news." });
   }
 });
 
