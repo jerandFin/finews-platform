@@ -56,6 +56,11 @@ app.post("/api/quiz", (req, res) => {
   res.json(localQuizData);
 });
 
+// --- 3.5 SPECIFIC PAGE ROUTE ---
+app.get('/quiz', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'quiz.html'));
+});
+
 // --- 4. THE FINAL MODERN CATCH-ALL ---
 // In modern Express/Node, the asterisk must be named, like :splat*
 app.get('/:splat*', (req, res) => {
