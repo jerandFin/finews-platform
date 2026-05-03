@@ -38,16 +38,33 @@ app.post("/api/quiz", async (req, res) => {
 
     const data = await response.json();
     
+    // FIX 1: Catch API-level errors (rate limits, bad keys, etc.) before parsing
+    if (!response.ok) {
+        console.error("Anthropic API Error:", data);
+        return res.status(response.status).json({ error: "AI API Error", details: data });
+    }
+
     if (data.content && data.content[0] && data.content[0].text) {
-        // Parse the text string from Claude into a JSON object
-        res.json(JSON.parse(data.content[0].text));
+        const rawText = data.content[0].text;
+        
+        // FIX 2: Strip Markdown code blocks (```json ... ```) that Claude sometimes adds
+        const cleanedText = rawText.replace(/```json\n?|```/g, '').trim();
+
+        // FIX 3: Safely attempt to parse the JSON
+        try {
+            const quizData = JSON.parse(cleanedText);
+            return res.json(quizData);
+        } catch (parseError) {
+            console.error("JSON Parsing Error. Raw Claude Output:", rawText);
+            return res.status(500).json({ error: "AI returned malformed data. Please try again." });
+        }
     } else {
-        res.status(500).json({ error: "Empty or malformed AI response", raw: data });
+        return res.status(500).json({ error: "Empty or malformed AI response", raw: data });
     }
     
   } catch (error) {
     console.error("AI Route Error:", error);
-    res.status(500).json({ error: "AI failed to respond" });
+    return res.status(500).json({ error: "AI failed to respond", details: error.message });
   }
 });
 
