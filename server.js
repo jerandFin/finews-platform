@@ -56,26 +56,18 @@ app.post("/api/quiz", (req, res) => {
   res.json(localQuizData);
 });
 
-// --- 4. THE UPDATED CATCH-ALL ---
-// Use (.*) instead of just * to satisfy the new path-to-regexp requirements
-app.get('/:any(.*)', (req, res) => {
-    // We check if the request is looking for a file (like .css or .js)
-    // if it's not a file, we send the index.html
-    if (req.path.includes('.') && !req.path.endsWith('.html')) {
-        res.status(404).send('File not found');
-    } else {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    }
-});
-
-// --- 5. SMART CATCH-ALL ---
-// This is updated to prevent it from accidentally catching .css or .js files
+// --- 4. THE FINAL CATCH-ALL ---
+// We remove the (.*) and the duplicate Step 5. 
+// This single route handles everything safely.
 app.get('*', (req, res) => {
-  if (req.path.includes('.')) {
-    res.status(404).send('File not found');
-  } else {
+    // If the browser is asking for a specific file (like .css or .js) 
+    // that doesn't exist, we send a 404 so it doesn't try to load HTML as CSS.
+    if (req.path.includes('.') && !req.path.endsWith('.html')) {
+        return res.status(404).send('File not found');
+    }
+    
+    // Otherwise, for any page route (like /quiz), send the index.html
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  }
 });
 
 const PORT = process.env.PORT || 10000;
