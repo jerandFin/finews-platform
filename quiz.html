@@ -1,143 +1,77 @@
-<script>
-    // --- FOUNDATIONAL WRAPPER: Prevents "Cannot read properties of null" ---
-    window.addEventListener('DOMContentLoaded', () => {
-        let selectedTopics = [];
-        let questions = [];
-        let current = 0;
-        let score = 0;
-        let answered = false;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinNews - Economics Quiz</title>
+    <!-- This path ensures your Render styles stay active -->
+    <link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
 
-        // 1. Topic Selection Logic
-        document.querySelectorAll('.topic-card').forEach(card => {
-            card.addEventListener('click', () => {
-                card.classList.toggle('selected');
-                selectedTopics = Array.from(document.querySelectorAll('.topic-card.selected')).map(c => c.dataset.topic);
-                const err = document.getElementById('topic-error');
-                if(err && selectedTopics.length > 0) err.style.display = 'none';
+    <!-- Navigation (Keep this identical to your main page design) -->
+    <nav class="navbar">
+        <div class="logo">FinNews</div>
+        <ul class="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/quiz">Quiz</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>Economics & Finance Quiz</h1>
+            <p>Test your knowledge on market patterns and reasoning.</p>
+        </header>
+
+        <div class="quiz-section">
+            <button id="generate-btn" class="btn-primary">Load Quiz Questions</button>
+            <div id="quiz-container" class="results-area">
+                <!-- Questions will appear here -->
+                <p style="color: gray;">Click the button above to begin.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Foundational Principle: Wait for the DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('generate-btn');
+            const container = document.getElementById('quiz-container');
+
+            btn.addEventListener('click', async () => {
+                // Visual feedback
+                container.innerHTML = "<p>Loading questions...</p>";
+
+                try {
+                    const response = await fetch("/api/quiz", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ topics: "economics" })
+                    });
+
+                    const questions = await response.json();
+
+                    // Clear the container and build the quiz
+                    container.innerHTML = "";
+                    
+                    questions.forEach((q, i) => {
+                        const div = document.createElement('div');
+                        div.className = 'quiz-card';
+                        div.innerHTML = `
+                            <h3>${i + 1}. ${q.question}</h3>
+                            <div class="options">
+                                ${q.options.map(opt => `<button class="opt-btn">${opt}</button>`).join('')}
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                } catch (err) {
+                    container.innerHTML = "<p>Error loading quiz. Please check your connection.</p>";
+                    console.error(err);
+                }
             });
         });
-
-        // 2. Start Button Logic (Safe ID Check)
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.addEventListener('click', async () => {
-                if (selectedTopics.length === 0) {
-                    const err = document.getElementById('topic-error');
-                    if(err) err.style.display = 'block';
-                    return;
-                }
-                showScreen('screen-loading');
-                await generateQuestions();
-            });
-        }
-
-        // 3. FIXED FETCH LOGIC (Isolated from News API)
-        async function generateQuestions() {
-            try {
-                const response = await fetch("/api/quiz", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ topics: selectedTopics.join(', ') })
-                });
-
-                if (!response.ok) throw new Error("Server communication failed");
-
-                const data = await response.json();
-                
-                if (Array.isArray(data) && data.length > 0) {
-                    questions = data;
-                    current = 0; 
-                    score = 0;
-                    showScreen('screen-quiz');
-                    showQuestion();
-                } else {
-                    throw new Error("No questions received from server");
-                }
-            } catch (err) {
-                console.error("Quiz Error:", err);
-                // Fail-safe: Returns user to topic selection if API hangs
-                showScreen('screen-topics');
-                alert("Quiz Load Error. Your news and design are still active!");
-            }
-        }
-
-        // 4. UI Display Logic
-        function showQuestion() {
-            answered = false;
-            const q = questions[current];
-            const qText = document.getElementById('q-text');
-            if (!q || !qText) return;
-
-            qText.textContent = q.question;
-            document.getElementById('progress-label').textContent = `Question ${current + 1} of ${questions.length}`;
-            
-            const optList = document.getElementById('options-list');
-            optList.innerHTML = '';
-            
-            q.options.forEach((opt) => {
-                const btn = document.createElement('button');
-                btn.className = 'option-btn';
-                btn.textContent = opt;
-                btn.onclick = () => {
-                    if(answered) return;
-                    answered = true;
-                    
-                    const isCorrect = (opt === q.correctAnswer);
-                    if(isCorrect) {
-                        btn.classList.add('correct');
-                        score += 10;
-                    } else {
-                        btn.classList.add('wrong');
-                        Array.from(optList.children).forEach(child => {
-                            if(child.textContent === q.correctAnswer) child.classList.add('correct');
-                        });
-                    }
-                    
-                    document.getElementById('score-val').textContent = score;
-                    const exp = document.getElementById('explanation-box');
-                    exp.innerHTML = `<strong>Answer:</strong> ${q.correctAnswer}`;
-                    exp.style.display = 'block';
-                    document.getElementById('next-btn').style.display = 'block';
-                };
-                optList.appendChild(btn);
-            });
-        }
-
-        // 5. Navigation Logic
-        const nextBtn = document.getElementById('next-btn');
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                current++;
-                if (current < questions.length) {
-                    document.getElementById('explanation-box').style.display = 'none';
-                    nextBtn.style.display = 'none';
-                    showQuestion();
-                } else {
-                    showResult();
-                }
-            });
-        }
-
-        function showResult() {
-            showScreen('screen-result');
-            const total = questions.length * 10;
-            const pct = (score / total) * 100;
-            let rank = pct >= 80 ? 'S' : pct >= 60 ? 'A' : 'B';
-            let title = pct >= 80 ? 'Market Master' : 'Analyst';
-
-            document.getElementById('result-rank').textContent = rank;
-            document.getElementById('result-title').textContent = title;
-            document.getElementById('result-subtitle').textContent = `Final Score: ${score} / ${total}`;
-        }
-
-        // 6. SCREEN SWITCHER (Independent Logic)
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            const target = document.getElementById(id);
-            if (target) {
-                target.classList.add('active');
-                window.scrollTo(0,0);
-            }
-        }
-    });
-</script>
+    </script>
+</body>
+</html>
