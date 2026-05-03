@@ -56,17 +56,15 @@ app.post("/api/quiz", (req, res) => {
   res.json(localQuizData);
 });
 
-// --- 4. THE FINAL CATCH-ALL ---
-// We remove the (.*) and the duplicate Step 5. 
-// This single route handles everything safely.
-app.get('*', (req, res) => {
-    // If the browser is asking for a specific file (like .css or .js) 
-    // that doesn't exist, we send a 404 so it doesn't try to load HTML as CSS.
+// --- 4. THE FINAL MODERN CATCH-ALL ---
+// In modern Express/Node, the asterisk must be named, like :splat*
+app.get('/:splat*', (req, res) => {
+    // 1. Protect Styles/JS: Prevents the MIME type error
     if (req.path.includes('.') && !req.path.endsWith('.html')) {
         return res.status(404).send('File not found');
     }
     
-    // Otherwise, for any page route (like /quiz), send the index.html
+    // 2. Protect Design: Serves your main index for all page routes
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
