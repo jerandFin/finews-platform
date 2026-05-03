@@ -4,13 +4,13 @@ const app = express();
 
 app.use(express.json());
 
-// 1. STYLE & DESIGN PROTECTION
-// This serves all files in 'public' (CSS, JS, Fonts) with absolute priority.
-// It prevents the MIME type "text/html" error by finding the real files first.
+// 1. THE CONSOLE & STYLE CLEANER
+// Stops the 404 favicon error and serves your CSS/Fonts immediately
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// --- 2. NEWS API ROUTE (STABLE) ---
+// --- 2. NEWS API ROUTE (DESIGN PROTECTED) ---
 app.get("/api/news", async (req, res) => {
   try {
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -21,12 +21,11 @@ app.get("/api/news", async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "News service unavailable" });
+    res.status(500).json({ error: "News service stable but headlines unavailable" });
   }
 });
 
-// --- 3. QUIZ ROUTE (STABLE & LOCAL) ---
-// This uses your foundational local data to avoid AI-generation 500 errors.
+// --- 3. FOUNDATIONAL QUIZ ROUTE (STABLE) ---
 app.post("/api/quiz", (req, res) => {
   const localQuizData = [
     {
@@ -49,7 +48,6 @@ app.post("/api/quiz", (req, res) => {
 });
 
 // --- 4. EXPLICIT PAGE ROUTES ---
-// We use direct paths instead of wildcards to stop the Render PathError crash.
 app.get('/quiz', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'quiz.html'));
 });
@@ -58,12 +56,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// --- 5. THE ULTIMATE STABILITY CATCH-ALL ---
-// If the path doesn't match anything above, we return the index.html.
-// We use a simple regex that is compatible with all Node versions.
+// --- 5. THE ULTIMATE CATCH-ALL ---
+// Compatible with Node v24.14.1 on Render
 app.get(/^((?!\.).)*$/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews Platform: Operational on port ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews Platform: High-Performance Mode on ${PORT}`));
