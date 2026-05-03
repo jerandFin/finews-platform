@@ -9,10 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   
   <!-- 
-    FIX 1: Updated CSS Path 
-    Points to the 'css' folder in your main section
+    FIX 1: CORRECTED PATH FOR RENDER
+    Your server.js uses app.use("/public", ...), so all CSS must start with /public/
   -->
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="/public/css/styles.css">
 
   <style>
     /* Inline styles for quiz-specific layout kept here for speed */
@@ -39,19 +39,22 @@
     .topic-card.selected { border-color: var(--gold); background: rgba(245,200,66,0.08); }
     .start-btn { display: block; width: 100%; padding: 18px; background: var(--gold); color: #0F1117; font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; border: none; border-radius: var(--radius); cursor: pointer; }
     .options-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-    .option-btn { padding: 16px 18px; background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); cursor: pointer; }
+    .option-btn { padding: 16px 18px; background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); cursor: pointer; text-align: left; }
     .option-btn.correct { background: rgba(86,207,122,0.15); border-color: var(--green); color: #56CF7A; }
     .option-btn.wrong { background: rgba(255,107,107,0.12); border-color: var(--coral); color: var(--coral); }
-    .explanation-box { background: var(--bg3); padding: 14px 18px; border-radius: var(--radius-sm); display: none; margin-bottom: 20px; }
-    .next-btn { width: 100%; padding: 16px; background: var(--bg3); color: var(--text); border: 1px solid var(--border); cursor: pointer; display: none; font-family: 'Syne'; font-weight: 700; }
-    #result-rank { font-family: 'Syne'; font-size: 72px; font-weight: 800; }
+    .explanation-box { background: var(--bg3); padding: 14px 18px; border-radius: var(--radius-sm); display: none; margin-bottom: 20px; border-left: 4px solid var(--gold); }
+    .next-btn { width: 100%; padding: 16px; background: var(--bg3); color: var(--text); border: 1px solid var(--border); cursor: pointer; display: none; font-family: 'Syne'; font-weight: 700; border-radius: 8px; }
+    #result-rank { font-family: 'Syne'; font-size: 72px; font-weight: 800; text-align: center; color: var(--gold); }
+    #result-title, #result-subtitle { text-align: center; }
+    .loading-icon { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
   </style>
 </head>
 <body>
 
 <nav class="top-nav">
-  <a href="index.html" class="nav-logo">FinNews</a>
-  <a href="index.html" class="nav-back">← Back to News</a>
+  <a href="/" class="nav-logo">FinNews</a>
+  <a href="/" class="nav-back">← Back to News</a>
 </nav>
 
 <div class="wrapper">
@@ -65,10 +68,6 @@
       <div class="topic-card" data-topic="Stock Markets"><div class="topic-icon">📈</div><div class="topic-name">Stock Markets</div></div>
       <div class="topic-card" data-topic="Investing"><div class="topic-icon">💰</div><div class="topic-name">Investing</div></div>
       <div class="topic-card" data-topic="Business"><div class="topic-icon">🏢</div><div class="topic-name">Business</div></div>
-    </div>
-
-    <div style="text-align:center; margin-bottom:30px;">
-      <button class="qcount-btn active" data-count="10">10 Questions</button>
     </div>
 
     <div class="error-box" id="topic-error" style="display:none; color:var(--coral); text-align:center; margin-bottom:10px;">Please select a topic.</div>
@@ -85,12 +84,12 @@
 
   <!-- QUIZ AREA -->
   <div class="screen" id="screen-quiz">
-    <div class="quiz-topbar">
-      <div class="quiz-topic-badge" id="quiz-topic-badge">Economics</div>
-      <div class="quiz-score">Score: <span id="score-val">0</span></div>
+    <div class="quiz-topbar" style="display:flex; justify-content: space-between; margin-bottom: 20px;">
+      <div class="quiz-topic-badge" id="quiz-topic-badge" style="background: var(--bg3); padding: 5px 15px; border-radius: 20px; font-size: 12px; border: 1px solid var(--gold);">Quiz Active</div>
+      <div class="quiz-score">Score: <span id="score-val" style="color: var(--gold); font-weight: bold;">0</span></div>
     </div>
-    <div id="progress-label" style="font-size:12px; margin:10px 0;">Question 1 of 10</div>
-    <div class="question-card" style="background:var(--bg2); padding:30px; border-radius:16px; margin-bottom:20px;">
+    <div id="progress-label" style="font-size:12px; margin:10px 0; color: var(--text-muted);">Question 1 of 10</div>
+    <div class="question-card" style="background:var(--bg2); padding:30px; border-radius:16px; margin-bottom:20px; border: 1px solid var(--border);">
       <div class="question-text" id="q-text" style="font-family:'Syne'; font-size:20px;"></div>
     </div>
     <div class="options-list" id="options-list"></div>
@@ -101,29 +100,29 @@
   <!-- RESULT SCREEN -->
   <div class="screen" id="screen-result">
     <div id="result-rank"></div>
-    <h2 id="result-title"></h2>
-    <p id="result-subtitle" style="margin-bottom:30px;"></p>
-    <button class="btn-replay" onclick="location.reload()" style="padding:15px 30px; background:var(--gold); border:none; border-radius:8px; cursor:pointer; font-weight:800;">Try Again</button>
+    <h2 id="result-title" style="margin-top: 10px;"></h2>
+    <p id="result-subtitle" style="margin-bottom:30px; color: var(--text-muted);"></p>
+    <div style="text-align: center;">
+        <button class="btn-replay" onclick="location.reload()" style="padding:15px 30px; background:var(--gold); border:none; border-radius:8px; cursor:pointer; font-weight:800; font-family: 'Syne';">Try Again</button>
+    </div>
   </div>
 </div>
 
 <script>
   let selectedTopics = [];
-  let questionCount = 10;
   let questions = [];
   let current = 0;
   let score = 0;
   let answered = false;
 
-  // Topic selection logic
   document.querySelectorAll('.topic-card').forEach(card => {
     card.addEventListener('click', () => {
       card.classList.toggle('selected');
       selectedTopics = Array.from(document.querySelectorAll('.topic-card.selected')).map(c => c.dataset.topic);
+      if(selectedTopics.length > 0) document.getElementById('topic-error').style.display = 'none';
     });
   });
 
-  // Start button logic
   document.getElementById('start-btn').addEventListener('click', async () => {
     if (selectedTopics.length === 0) {
       document.getElementById('topic-error').style.display = 'block';
@@ -139,23 +138,26 @@
       const response = await fetch("/api/quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topics: topicStr, count: questionCount })
+        body: JSON.stringify({ topics: topicStr })
       });
 
       if (!response.ok) throw new Error("Server error");
       const data = await response.json();
       
-      // Clean up JSON from AI
+      // Extract the text content from Claude's response
       const rawText = data.content[0].text.trim();
-      const cleanJson = rawText.replace(/```json|```/g, '').trim();
-      questions = JSON.parse(cleanJson);
+      // Use regex to extract only the JSON part if Claude adds conversational text
+      const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error("Invalid AI response format");
+      
+      questions = JSON.parse(jsonMatch[0]);
 
       current = 0; score = 0;
       showScreen('screen-quiz');
       showQuestion();
     } catch (err) {
       console.error(err);
-      alert("Failed to generate quiz. Make sure your server is running!");
+      alert("Failed to generate quiz. Make sure your server is running and API keys are set!");
       showScreen('screen-topics');
     }
   }
@@ -176,14 +178,24 @@
       btn.onclick = () => {
         if(answered) return;
         answered = true;
-        if(idx === q.answer) {
+        
+        // q.answer might be the index (0-3) or the string. We'll check both.
+        const isCorrect = (typeof q.answer === 'number' && idx === q.answer) || (opt === q.answer);
+        
+        if(isCorrect) {
           btn.classList.add('correct');
           score += 10;
         } else {
           btn.classList.add('wrong');
+          // Highlight the correct one
+          Array.from(optList.children).forEach((child, cIdx) => {
+              if((typeof q.answer === 'number' && cIdx === q.answer) || (child.textContent === q.answer)) {
+                  child.classList.add('correct');
+              }
+          });
         }
         document.getElementById('score-val').textContent = score;
-        document.getElementById('explanation-box').textContent = q.explanation;
+        document.getElementById('explanation-box').textContent = q.explanation || "No explanation provided.";
         document.getElementById('explanation-box').style.display = 'block';
         document.getElementById('next-btn').style.display = 'block';
       };
@@ -204,10 +216,19 @@
 
   function showResult() {
     showScreen('screen-result');
-    const pct = (score / (questions.length * 10)) * 100;
-    document.getElementById('result-rank').textContent = pct >= 80 ? 'S' : 'B';
-    document.getElementById('result-title').textContent = pct >= 80 ? 'Master' : 'Student';
-    document.getElementById('result-subtitle').textContent = `You scored ${score} points!`;
+    const totalPossible = questions.length * 10;
+    const pct = (score / totalPossible) * 100;
+    
+    let rank = 'C';
+    let title = 'Student';
+    
+    if(pct >= 90) { rank = 'S'; title = 'Economic Mastermind'; }
+    else if(pct >= 70) { rank = 'A'; title = 'Market Analyst'; }
+    else if(pct >= 50) { rank = 'B'; title = 'Business Junior'; }
+
+    document.getElementById('result-rank').textContent = rank;
+    document.getElementById('result-title').textContent = title;
+    document.getElementById('result-subtitle').textContent = `You scored ${score} out of ${totalPossible} points!`;
   }
 
   function showScreen(id) {
@@ -217,10 +238,10 @@
 </script>
 
 <!-- 
-  FIX 2: JS path 
-  Points to your js folder in root 
+  FIX 2: JS PATH
+  Removed duplicate scripts and fixed path to /public/js/
 -->
-<script src="js/quiz.js"></script>
+<script src="/public/js/app.js"></script>
 
 </body>
 </html>
