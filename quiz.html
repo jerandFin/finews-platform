@@ -1,4 +1,6 @@
 <script>
+    // --- FOUNDATIONAL WRAPPER: Prevents "Cannot read properties of null" ---
+    window.addEventListener('DOMContentLoaded', () => {
         let selectedTopics = [];
         let questions = [];
         let current = 0;
@@ -15,18 +17,21 @@
             });
         });
 
-        // 2. Start Logic
-        document.getElementById('start-btn').addEventListener('click', async () => {
-            if (selectedTopics.length === 0) {
-                const err = document.getElementById('topic-error');
-                if(err) err.style.display = 'block';
-                return;
-            }
-            showScreen('screen-loading');
-            await generateQuestions();
-        });
+        // 2. Start Button Logic (Safe ID Check)
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.addEventListener('click', async () => {
+                if (selectedTopics.length === 0) {
+                    const err = document.getElementById('topic-error');
+                    if(err) err.style.display = 'block';
+                    return;
+                }
+                showScreen('screen-loading');
+                await generateQuestions();
+            });
+        }
 
-        // 3. FIXED FETCH LOGIC (Matches your Stable Server)
+        // 3. FIXED FETCH LOGIC (Isolated from News API)
         async function generateQuestions() {
             try {
                 const response = await fetch("/api/quiz", {
@@ -37,7 +42,6 @@
 
                 if (!response.ok) throw new Error("Server communication failed");
 
-                // DIRECT PARSE: We no longer look for data.content[0].text
                 const data = await response.json();
                 
                 if (Array.isArray(data) && data.length > 0) {
@@ -49,27 +53,28 @@
                 } else {
                     throw new Error("No questions received from server");
                 }
-
             } catch (err) {
                 console.error("Quiz Error:", err);
-                alert("Quiz Load Error: Check your Render logs or API keys.");
+                // Fail-safe: Returns user to topic selection if API hangs
                 showScreen('screen-topics');
+                alert("Quiz Load Error. Your news and design are still active!");
             }
         }
 
-        // 4. UI Display (Simplified for stability)
+        // 4. UI Display Logic
         function showQuestion() {
             answered = false;
             const q = questions[current];
-            if (!q) return;
+            const qText = document.getElementById('q-text');
+            if (!q || !qText) return;
 
-            document.getElementById('q-text').textContent = q.question;
+            qText.textContent = q.question;
             document.getElementById('progress-label').textContent = `Question ${current + 1} of ${questions.length}`;
             
             const optList = document.getElementById('options-list');
             optList.innerHTML = '';
             
-            q.options.forEach((opt, idx) => {
+            q.options.forEach((opt) => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
                 btn.textContent = opt;
@@ -78,13 +83,11 @@
                     answered = true;
                     
                     const isCorrect = (opt === q.correctAnswer);
-                    
                     if(isCorrect) {
                         btn.classList.add('correct');
                         score += 10;
                     } else {
                         btn.classList.add('wrong');
-                        // Highlight the right answer
                         Array.from(optList.children).forEach(child => {
                             if(child.textContent === q.correctAnswer) child.classList.add('correct');
                         });
@@ -100,17 +103,20 @@
             });
         }
 
-        // 5. Navigation & Screen Switching
-        document.getElementById('next-btn').addEventListener('click', () => {
-            current++;
-            if (current < questions.length) {
-                document.getElementById('explanation-box').style.display = 'none';
-                document.getElementById('next-btn').style.display = 'none';
-                showQuestion();
-            } else {
-                showResult();
-            }
-        });
+        // 5. Navigation Logic
+        const nextBtn = document.getElementById('next-btn');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                current++;
+                if (current < questions.length) {
+                    document.getElementById('explanation-box').style.display = 'none';
+                    nextBtn.style.display = 'none';
+                    showQuestion();
+                } else {
+                    showResult();
+                }
+            });
+        }
 
         function showResult() {
             showScreen('screen-result');
@@ -124,6 +130,7 @@
             document.getElementById('result-subtitle').textContent = `Final Score: ${score} / ${total}`;
         }
 
+        // 6. SCREEN SWITCHER (Independent Logic)
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             const target = document.getElementById(id);
@@ -132,4 +139,5 @@
                 window.scrollTo(0,0);
             }
         }
-    </script>
+    });
+</script>
