@@ -38,7 +38,6 @@ app.post("/api/quiz", async (req, res) => {
 
     const data = await response.json();
     
-    // FIX 1: Catch API-level errors (rate limits, bad keys, etc.) before parsing
     if (!response.ok) {
         console.error("Anthropic API Error:", data);
         return res.status(response.status).json({ error: "AI API Error", details: data });
@@ -46,11 +45,8 @@ app.post("/api/quiz", async (req, res) => {
 
     if (data.content && data.content[0] && data.content[0].text) {
         const rawText = data.content[0].text;
-        
-        // FIX 2: Strip Markdown code blocks (```json ... ```) that Claude sometimes adds
         const cleanedText = rawText.replace(/```json\n?|```/g, '').trim();
 
-        // FIX 3: Safely attempt to parse the JSON
         try {
             const quizData = JSON.parse(cleanedText);
             return res.json(quizData);
@@ -70,18 +66,17 @@ app.post("/api/quiz", async (req, res) => {
 
 // --- PAGE ROUTES ---
 
-// Specific route for quiz.html since it is in the root
 app.get('/quiz', (req, res) => {
   res.sendFile(path.join(__dirname, 'quiz.html'));
 });
 
-// Route for index.html since it is in the root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 2. Catch-all route (must be last)
-app.get('*', (req, res) => {
+// 2. FIXED CATCH-ALL ROUTE
+// Changed '*' to '(.*)' to comply with new Express/path-to-regexp rules
+app.get('(.*)', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
