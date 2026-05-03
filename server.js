@@ -4,14 +4,13 @@ const app = express();
 
 app.use(express.json()); 
 
-// 1. Matches your structure: public/css/styles.css and public/js/app.js
+// 1. Serve the 'public' folder contents directly at the root path
 app.use(express.static(path.join(__dirname, 'public'))); 
 
 // --- AI QUIZ ROUTE ---
 app.post("/api/quiz", async (req, res) => {
   const { topics } = req.body;
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: "Key missing" });
 
   try {
@@ -25,42 +24,28 @@ app.post("/api/quiz", async (req, res) => {
       body: JSON.stringify({
         model: "claude-3-5-sonnet-20240620", 
         max_tokens: 2000,
-        messages: [{ 
-          role: "user", 
-          content: `Generate a 5-question multiple choice quiz about ${topics}. Return ONLY a JSON array of objects. No conversational text.` 
-        }]
+        messages: [{ role: "user", content: `Generate a 5-question quiz about ${topics} as a JSON array.` }]
       })
     });
-
     const data = await response.json();
     if (data.content && data.content[0]?.text) {
-        // Strips any potential markdown formatting from the AI
         const cleanedText = data.content[0].text.replace(/```json\n?|```/g, '').trim();
         res.json(JSON.parse(cleanedText));
     } else {
-        res.status(500).json({ error: "AI response malformed" });
+        res.status(500).json({ error: "AI error" });
     }
   } catch (error) {
-    res.status(500).json({ error: "Internal server error during AI call" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// --- PAGE ROUTES (Matches root location for .html files) ---
-app.get('/quiz', (req, res) => {
-  res.sendFile(path.join(__dirname, 'quiz.html'));
-});
+// --- PAGE ROUTES (Files in your main root) ---
+app.get('/quiz', (req, res) => res.sendFile(path.join(__dirname, 'quiz.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// --- THE SMART CATCH-ALL (Fixes Render PathError & SyntaxError) ---
-// This regex specifically ignores any request that looks like a file (contains a dot)
-app.get(/^[^\.]*$/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+// --- THE FIX FOR THE MIME ERROR ---
+// This regex tells the server: "If the request is NOT for a real file (like .css), send index.html"
+app.get(/^[^\.]*$/, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
