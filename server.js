@@ -4,7 +4,7 @@ const app = express();
 
 app.use(express.json()); 
 
-// 1. CRITICAL: Serve the 'public' folder so the server can see 'css' and 'js'
+// 1. Matches your structure: public/css/styles.css and public/js/app.js
 app.use(express.static(path.join(__dirname, 'public'))); 
 
 // --- AI QUIZ ROUTE ---
@@ -27,24 +27,25 @@ app.post("/api/quiz", async (req, res) => {
         max_tokens: 2000,
         messages: [{ 
           role: "user", 
-          content: `Generate a 5-question multiple choice quiz about ${topics}. Return ONLY a JSON array. No conversational text.` 
+          content: `Generate a 5-question multiple choice quiz about ${topics}. Return ONLY a JSON array of objects. No conversational text.` 
         }]
       })
     });
 
     const data = await response.json();
     if (data.content && data.content[0]?.text) {
+        // Strips any potential markdown formatting from the AI
         const cleanedText = data.content[0].text.replace(/```json\n?|```/g, '').trim();
         res.json(JSON.parse(cleanedText));
     } else {
-        res.status(500).json({ error: "AI error" });
+        res.status(500).json({ error: "AI response malformed" });
     }
   } catch (error) {
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Internal server error during AI call" });
   }
 });
 
-// --- PAGE ROUTES (Pointing to your root files) ---
+// --- PAGE ROUTES (Matches root location for .html files) ---
 app.get('/quiz', (req, res) => {
   res.sendFile(path.join(__dirname, 'quiz.html'));
 });
@@ -53,11 +54,13 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- THE SMART CATCH-ALL ---
-// This ignores files with dots (.css, .js) so they load from the 'public' folder instead
+// --- THE SMART CATCH-ALL (Fixes Render PathError & SyntaxError) ---
+// This regex specifically ignores any request that looks like a file (contains a dot)
 app.get(/^[^\.]*$/, (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
