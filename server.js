@@ -30,21 +30,23 @@ app.get("/api/news", async (req, res) => {
     }
 });
 
-// --- 3. ECONOMICS QUIZ API ---
+// --- Update only Section 3 in your existing server.js ---
+
 app.post("/api/quiz", (req, res) => {
-    const localQuizData = [
-        {
-            question: "What is the primary indicator of a country's economic health?",
-            options: ["GDP", "Stock Market Index", "Currency Strength", "Interest Rates"],
-            correctAnswer: "GDP"
-        },
-        {
-            question: "Which term describes a general increase in prices?",
-            options: ["Deflation", "Inflation", "Stagnation", "Recession"],
-            correctAnswer: "Inflation"
-        }
+    const questionPool = [
+        { question: "Which term describes a general increase in prices?", options: ["Deflation", "Inflation", "Stagnation", "Recession"], correctAnswer: "Inflation" },
+        { question: "What is the primary indicator of a country's economic health?", options: ["GDP", "Stock Market Index", "Currency Strength", "Interest Rates"], correctAnswer: "GDP" },
+        { question: "What happens to demand when price increases (ceteris paribus)?", options: ["Increases", "Decreases", "Stays same", "Fluctuates"], correctAnswer: "Decreases" },
+        { question: "Which bank manages the money supply in the USA?", options: ["World Bank", "IMF", "The Federal Reserve", "Goldman Sachs"], correctAnswer: "The Federal Reserve" },
+        { question: "A 'Bull Market' typically indicates what?", options: ["Falling prices", "Rising prices", "Stable prices", "Market crash"], correctAnswer: "Rising prices" },
+        { question: "What is the term for a period of temporary economic decline?", options: ["Expansion", "Depression", "Recession", "Peak"], correctAnswer: "Recession" }
     ];
-    res.json(localQuizData);
+
+    // EXPERT FIX: Shuffles the pool and picks 3 random questions
+    const shuffled = questionPool.sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 3);
+    
+    res.json(selected);
 });
 
 // --- 4. ROOT-LEVEL HTML DELIVERY (Condition B) ---
