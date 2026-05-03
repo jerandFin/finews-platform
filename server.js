@@ -4,12 +4,13 @@ const app = express();
 
 app.use(express.json());
 
-// 1. STYLE & STATIC PROTECTOR
-// We explicitly tell the server to look in 'public' for any folder-based requests first.
-app.use('/public', express.static(path.join(__dirname, 'public')));
+// 1. STYLE & DESIGN PROTECTION
+// This serves all files in 'public' (CSS, JS, Fonts) with absolute priority.
+// It prevents the MIME type "text/html" error by finding the real files first.
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// --- 2. NEWS API ROUTE (STAYS WORKING) ---
+// --- 2. NEWS API ROUTE (STABLE) ---
 app.get("/api/news", async (req, res) => {
   try {
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -20,11 +21,12 @@ app.get("/api/news", async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "News failed" });
+    res.status(500).json({ error: "News service unavailable" });
   }
 });
 
-// --- 3. FOUNDATIONAL QUIZ ROUTE ---
+// --- 3. QUIZ ROUTE (STABLE & LOCAL) ---
+// This uses your foundational local data to avoid AI-generation 500 errors.
 app.post("/api/quiz", (req, res) => {
   const localQuizData = [
     {
@@ -38,40 +40,30 @@ app.post("/api/quiz", (req, res) => {
       correctAnswer: "WTO"
     },
     {
-      question: "What is 'Inflation'?",
-      options: ["The rise in purchasing power", "The fall in general price levels", "The rise in general price levels", "The growth of the stock market"],
-      correctAnswer: "The rise in general price levels"
-    },
-    {
       question: "In finance, what does 'ROI' stand for?",
       options: ["Rate of Inflation", "Return on Investment", "Risk of Interest", "Revenue on Income"],
       correctAnswer: "Return on Investment"
-    },
-    {
-      question: "Which of these is a 'Fixed Cost' for a business?",
-      options: ["Raw materials", "Hourly wages", "Monthly rent", "Shipping fees"],
-      correctAnswer: "Monthly rent"
     }
   ];
   res.json(localQuizData);
 });
 
-// --- 3.5 SPECIFIC PAGE ROUTE ---
+// --- 4. EXPLICIT PAGE ROUTES ---
+// We use direct paths instead of wildcards to stop the Render PathError crash.
 app.get('/quiz', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'quiz.html'));
+  res.sendFile(path.join(__dirname, 'public', 'quiz.html'));
 });
 
-// --- 4. THE FINAL MODERN CATCH-ALL ---
-// In modern Express/Node, the asterisk must be named, like :splat*
-app.get('/:splat*', (req, res) => {
-    // 1. Protect Styles/JS: Prevents the MIME type error
-    if (req.path.includes('.') && !req.path.endsWith('.html')) {
-        return res.status(404).send('File not found');
-    }
-    
-    // 2. Protect Design: Serves your main index for all page routes
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// --- 5. THE ULTIMATE STABILITY CATCH-ALL ---
+// If the path doesn't match anything above, we return the index.html.
+// We use a simple regex that is compatible with all Node versions.
+app.get(/^((?!\.).)*$/, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews Platform: Stable Local Mode on ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews Platform: Operational on port ${PORT}`));
