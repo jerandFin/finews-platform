@@ -1,81 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinNews - AI Economic Quiz</title>
-    <style>
-        /* CRITICAL: This CSS prevents the "White Screen" issue */
-        .screen {
-            display: none !important; /* Hide all screens by default */
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .screen.active {
-            display: block !important; /* Force visibility when active */
-            opacity: 1;
-        }
-
-        /* Ensure text is visible against background */
-        body {
-            background-color: #0f111a;
-            color: #ffffff;
-            font-family: sans-serif;
-        }
-
-        .option-btn.correct { background-color: #28a745 !important; color: white; }
-        .option-btn.wrong { background-color: #dc3545 !important; color: white; }
-        #explanation-box { border-left: 4px solid #4f46e5; padding-left: 10px; margin: 15px 0; }
-    </style>
-</head>
-<body>
-
-    <!-- 1. TOPIC SELECTION SCREEN -->
-    <div id="screen-topics" class="screen active">
-        <h1>Select Your Economics Topics</h1>
-        <div class="topic-grid">
-            <div class="topic-card" data-topic="Macroeconomics">Macroeconomics</div>
-            <div class="topic-card" data-topic="Stock Market">Stock Market</div>
-            <div class="topic-card" data-topic="Fiscal Policy">Fiscal Policy</div>
-        </div>
-        <p id="topic-error" style="display:none; color: #ff4d4d;">Please select at least one topic.</p>
-        <button id="start-btn">Generate AI Quiz</button>
-    </div>
-
-    <!-- 2. LOADING SCREEN -->
-    <div id="screen-loading" class="screen">
-        <div class="loader"></div>
-        <p>AI is crafting your questions...</p>
-    </div>
-
-    <!-- 3. QUIZ SCREEN -->
-    <div id="screen-quiz" class="screen">
-        <div id="progress-label">Question 1 of 5</div>
-        <div id="score-container">Score: <span id="score-val">0</span></div>
-        <h2 id="q-text">Loading question...</h2>
-        <div id="options-list"></div>
-        <div id="explanation-box" style="display:none;"></div>
-        <button id="next-btn" style="display:none;">Next Question</button>
-    </div>
-
-    <!-- 4. RESULT SCREEN -->
-    <div id="screen-result" class="screen">
-        <h1>Quiz Complete!</h1>
-        <div id="result-rank" style="font-size: 3rem; font-weight: bold;"></div>
-        <div id="result-title"></div>
-        <p id="result-subtitle"></p>
-        <button onclick="location.reload()">Try Again</button>
-    </div>
-
-    <script>
+<script>
         let selectedTopics = [];
         let questions = [];
         let current = 0;
         let score = 0;
         let answered = false;
 
-        // 1. Topic Selection
+        // 1. Topic Selection Logic
         document.querySelectorAll('.topic-card').forEach(card => {
             card.addEventListener('click', () => {
                 card.classList.toggle('selected');
@@ -96,7 +26,7 @@
             await generateQuestions();
         });
 
-        // 3. AI Fetching
+        // 3. FIXED FETCH LOGIC (Matches your Stable Server)
         async function generateQuestions() {
             try {
                 const response = await fetch("/api/quiz", {
@@ -105,46 +35,41 @@
                     body: JSON.stringify({ topics: selectedTopics.join(', ') })
                 });
 
+                if (!response.ok) throw new Error("Server communication failed");
+
+                // DIRECT PARSE: We no longer look for data.content[0].text
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error || "Server error");
-
-                if (!data.content || !data.content[0]) throw new Error("Empty AI response");
                 
-                const rawText = data.content[0].text;
-                const jsonMatch = rawText.match(/\[[\s\S]*\]/); 
-                if (!jsonMatch) throw new Error("AI failed to return a proper list.");
-                
-                questions = JSON.parse(jsonMatch[0]);
-                if (questions.length === 0) throw new Error("No questions generated.");
+                if (Array.isArray(data) && data.length > 0) {
+                    questions = data;
+                    current = 0; 
+                    score = 0;
+                    showScreen('screen-quiz');
+                    showQuestion();
+                } else {
+                    throw new Error("No questions received from server");
+                }
 
-                current = 0; score = 0;
-                showScreen('screen-quiz');
-                showQuestion();
             } catch (err) {
                 console.error("Quiz Error:", err);
-                alert("Error: " + err.message);
+                alert("Quiz Load Error: Check your Render logs or API keys.");
                 showScreen('screen-topics');
             }
         }
 
-        // 4. UI Display
+        // 4. UI Display (Simplified for stability)
         function showQuestion() {
             answered = false;
             const q = questions[current];
             if (!q) return;
 
-            // Property Name Fallbacks
-            const qText = q.question || q.text || "Question Missing";
-            const opts = q.options || q.choices || q.answers || [];
-            const correctIdx = (q.answer !== undefined) ? q.answer : q.correctIndex;
-
-            document.getElementById('q-text').textContent = qText;
+            document.getElementById('q-text').textContent = q.question;
             document.getElementById('progress-label').textContent = `Question ${current + 1} of ${questions.length}`;
             
             const optList = document.getElementById('options-list');
             optList.innerHTML = '';
             
-            opts.forEach((opt, idx) => {
+            q.options.forEach((opt, idx) => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
                 btn.textContent = opt;
@@ -152,23 +77,22 @@
                     if(answered) return;
                     answered = true;
                     
-                    const isCorrect = (idx === correctIdx) || (opt.trim() === String(correctIdx).trim());
+                    const isCorrect = (opt === q.correctAnswer);
                     
                     if(isCorrect) {
                         btn.classList.add('correct');
                         score += 10;
                     } else {
                         btn.classList.add('wrong');
-                        Array.from(optList.children).forEach((child, cIdx) => {
-                            if(cIdx === correctIdx || child.textContent.trim() === String(correctIdx).trim()) {
-                                child.classList.add('correct');
-                            }
+                        // Highlight the right answer
+                        Array.from(optList.children).forEach(child => {
+                            if(child.textContent === q.correctAnswer) child.classList.add('correct');
                         });
                     }
                     
                     document.getElementById('score-val').textContent = score;
                     const exp = document.getElementById('explanation-box');
-                    exp.innerHTML = `<strong>Explanation:</strong><br>${q.explanation || "Detailed analysis coming soon."}`;
+                    exp.innerHTML = `<strong>Answer:</strong> ${q.correctAnswer}`;
                     exp.style.display = 'block';
                     document.getElementById('next-btn').style.display = 'block';
                 };
@@ -176,7 +100,7 @@
             });
         }
 
-        // 5. Navigation
+        // 5. Navigation & Screen Switching
         document.getElementById('next-btn').addEventListener('click', () => {
             current++;
             if (current < questions.length) {
@@ -192,20 +116,16 @@
             showScreen('screen-result');
             const total = questions.length * 10;
             const pct = (score / total) * 100;
-            
-            let rank = 'B'; let title = 'Finance Junior';
-            if(pct >= 90) { rank = 'S'; title = 'Economic Mastermind'; }
-            else if(pct >= 70) { rank = 'A'; title = 'Market Analyst'; }
+            let rank = pct >= 80 ? 'S' : pct >= 60 ? 'A' : 'B';
+            let title = pct >= 80 ? 'Market Master' : 'Analyst';
 
             document.getElementById('result-rank').textContent = rank;
             document.getElementById('result-title').textContent = title;
-            document.getElementById('result-subtitle').textContent = `You scored ${score} / ${total}`;
+            document.getElementById('result-subtitle').textContent = `Final Score: ${score} / ${total}`;
         }
 
         function showScreen(id) {
-            // Hide all screens
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            // Show the target screen
             const target = document.getElementById(id);
             if (target) {
                 target.classList.add('active');
@@ -213,5 +133,3 @@
             }
         }
     </script>
-</body>
-</html>
