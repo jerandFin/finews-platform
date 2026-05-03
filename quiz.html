@@ -3,100 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinNews - Market Intel Quiz</title>
-    <!-- Priority A: Maintain link to your core styles -->
+    <title>Market Mastery — FinNews</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Link to your existing core styles (B.1) -->
     <link rel="stylesheet" href="/public/css/styles.css">
+
     <style>
-        /* Specific enhancements for Quiz layout without breaking core styles */
-        .quiz-card { background: #fff; padding: 25px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; }
-        .opt-btn { display: block; width: 100%; text-align: left; padding: 12px; margin: 8px 0; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; transition: 0.2s; border-radius: 5px; font-family: 'Inter', sans-serif; }
-        .opt-btn:hover { background: #eef2ff; border-color: #4f46e5; }
-        .correct { background: #dcfce7 !important; border-color: #22c55e !important; }
-        .incorrect { background: #fee2e2 !important; border-color: #ef4444 !important; }
-        .score-display { font-weight: 600; font-size: 1.2rem; color: #1e293b; margin: 20px 0; }
+        /* Specific Quiz Enhancements — Prioritizing clean design (A) */
+        .quiz-container-inner { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        
+        .quiz-header { text-align: center; margin-bottom: 50px; }
+        .quiz-header h1 { font-family: 'Playfair Display', serif; font-size: 2.5rem; margin-bottom: 10px; }
+        
+        .quiz-card { 
+            background: white; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 12px; 
+            padding: 30px; 
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .question-text { font-size: 1.25rem; font-weight: 600; margin-bottom: 20px; color: #1e293b; }
+
+        .options-grid { display: grid; gap: 12px; }
+
+        .opt-btn { 
+            background: #f8fafc; 
+            border: 1px solid #e2e8f0; 
+            padding: 15px; 
+            border-radius: 8px; 
+            text-align: left; 
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .opt-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        
+        /* Feedback Styles */
+        .opt-btn.correct { background: #dcfce7; border-color: #22c55e; color: #166534; font-weight: 600; }
+        .opt-btn.incorrect { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+
+        .score-banner {
+            background: #1e293b;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        .gen-btn {
+            background: #1e293b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gen-btn:hover { background: #334155; }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="logo">FinNews</div>
-        <ul class="nav-links">
-            <li><a href="/">Home</a></li>
-            <li><a href="/quiz">Quiz</a></li>
-        </ul>
-    </nav>
 
-    <div class="container">
-        <header style="text-align: center; margin: 40px 0;">
-            <h1 style="font-family: 'Playfair Display', serif;">Market Mastery Quiz</h1>
-            <p>Analyze economic scenarios and test your reasoning.</p>
-        </header>
-
-        <div class="quiz-section">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <button id="generate-btn" class="btn-primary">Generate Fresh Quiz</button>
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <h1 class="logo" style="cursor: pointer;" onclick="window.location.href='/'">FinNews</h1>
+                <p class="tagline">Markets • Business • Economy</p>
             </div>
-            <div id="score-container" class="score-display" style="display: none;"></div>
-            <div id="quiz-container">
-                <p style="text-align: center; color: #64748b;">Ready to begin your session?</p>
-            </div>
+            <a href="/" class="nav-btn">← Back to News</a>
         </div>
-    </div>
+    </header>
+
+    <main class="quiz-container-inner">
+        <div class="quiz-header">
+            <h1>Market Mastery Quiz</h1>
+            <p>Analyze economic scenarios and test your financial reasoning.</p>
+            <button id="generate-btn" class="gen-btn">Generate Fresh Quiz</button>
+        </div>
+
+        <div id="score-display" class="score-banner" style="display: none;"></div>
+        <div id="quiz-wrapper">
+            <!-- Questions load here -->
+        </div>
+    </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('generate-btn');
-            const container = document.getElementById('quiz-container');
-            const scoreContainer = document.getElementById('score-container');
+        const btn = document.getElementById('generate-btn');
+        const wrapper = document.getElementById('quiz-wrapper');
+        const scoreDisplay = document.getElementById('score-display');
 
-            btn.addEventListener('click', async () => {
-                container.innerHTML = "<p style='text-align:center;'>Fetching market data...</p>";
-                scoreContainer.style.display = 'none';
+        btn.addEventListener('click', async () => {
+            wrapper.innerHTML = "<p style='text-align:center;'>Fetching intelligence data...</p>";
+            scoreDisplay.style.display = 'none';
+            
+            try {
+                const res = await fetch('/api/quiz', { method: 'POST' });
+                const questions = await res.json();
+                
+                wrapper.innerHTML = "";
+                let score = 0;
 
-                try {
-                    const response = await fetch("/api/quiz", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" }
-                    });
-                    const questions = await response.json();
+                questions.forEach((q, qIdx) => {
+                    const card = document.createElement('div');
+                    card.className = 'quiz-card';
+                    card.innerHTML = `
+                        <div class="question-text">${qIdx + 1}. ${q.question}</div>
+                        <div class="options-grid" id="grid-${qIdx}">
+                            ${q.options.map(opt => `
+                                <button class="opt-btn" onclick="handleSelect(this, '${opt}', '${q.correctAnswer}', ${qIdx})">
+                                    ${opt}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `;
+                    wrapper.appendChild(card);
+                });
+
+                window.handleSelect = (btn, selected, correct, qIdx) => {
+                    const grid = document.getElementById(`grid-${qIdx}`);
+                    const buttons = grid.querySelectorAll('.opt-btn');
                     
-                    container.innerHTML = "";
-                    let score = 0;
+                    buttons.forEach(b => b.disabled = true);
+                    
+                    if (selected === correct) {
+                        btn.classList.add('correct');
+                        score++;
+                    } else {
+                        btn.classList.add('incorrect');
+                        buttons.forEach(b => {
+                            if (b.innerText.trim() === correct) b.classList.add('correct');
+                        });
+                    }
+                    
+                    scoreDisplay.style.display = 'block';
+                    scoreDisplay.innerText = `Current Session Score: ${score} / ${questions.length}`;
+                };
 
-                    questions.forEach((q, i) => {
-                        const div = document.createElement('div');
-                        div.className = 'quiz-card';
-                        div.innerHTML = `
-                            <h3 style="margin-bottom:15px;">${i + 1}. ${q.question}</h3>
-                            <div class="options" id="opts-${i}">
-                                ${q.options.map(opt => `<button class="opt-btn" onclick="checkAnswer(this, '${opt}', '${q.correctAnswer}', ${i})">${opt}</button>`).join('')}
-                            </div>
-                        `;
-                        container.appendChild(div);
-                    });
-
-                    window.checkAnswer = (btn, selected, correct, index) => {
-                        const parent = document.getElementById(`opts-${index}`);
-                        const buttons = parent.querySelectorAll('.opt-btn');
-                        
-                        buttons.forEach(b => b.disabled = true); // Prevent double clicking
-                        
-                        if (selected === correct) {
-                            btn.classList.add('correct');
-                            score++;
-                        } else {
-                            btn.classList.add('incorrect');
-                            // Show the correct one
-                            buttons.forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
-                        }
-                        
-                        scoreContainer.style.display = 'block';
-                        scoreContainer.innerText = `Current Session Score: ${score} / ${questions.length}`;
-                    };
-
-                } catch (err) {
-                    container.innerHTML = "<p>Server communication error. Check Render logs.</p>";
-                }
-            });
+            } catch (err) {
+                wrapper.innerHTML = "<p style='color:red;'>Failed to load quiz. Please try again.</p>";
+            }
         });
     </script>
 </body>
