@@ -3,13 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinNews - Economics Quiz</title>
-    <!-- FIX: Correct path to your styles.css based on your file structure -->
+    <title>FinNews - Market Intel Quiz</title>
+    <!-- Priority A: Maintain link to your core styles -->
     <link rel="stylesheet" href="/public/css/styles.css">
+    <style>
+        /* Specific enhancements for Quiz layout without breaking core styles */
+        .quiz-card { background: #fff; padding: 25px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .opt-btn { display: block; width: 100%; text-align: left; padding: 12px; margin: 8px 0; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; transition: 0.2s; border-radius: 5px; font-family: 'Inter', sans-serif; }
+        .opt-btn:hover { background: #eef2ff; border-color: #4f46e5; }
+        .correct { background: #dcfce7 !important; border-color: #22c55e !important; }
+        .incorrect { background: #fee2e2 !important; border-color: #ef4444 !important; }
+        .score-display { font-weight: 600; font-size: 1.2rem; color: #1e293b; margin: 20px 0; }
+    </style>
 </head>
 <body>
-
-    <!-- Navigation -->
     <nav class="navbar">
         <div class="logo">FinNews</div>
         <ul class="nav-links">
@@ -19,15 +26,18 @@
     </nav>
 
     <div class="container">
-        <header>
-            <h1>Economics & Finance Quiz</h1>
-            <p>Test your knowledge on market patterns and reasoning.</p>
+        <header style="text-align: center; margin: 40px 0;">
+            <h1 style="font-family: 'Playfair Display', serif;">Market Mastery Quiz</h1>
+            <p>Analyze economic scenarios and test your reasoning.</p>
         </header>
 
         <div class="quiz-section">
-            <button id="generate-btn" class="btn-primary">Load Quiz Questions</button>
-            <div id="quiz-container" class="results-area">
-                <p style="color: gray;">Click the button above to begin.</p>
+            <div style="text-align: center; margin-bottom: 30px;">
+                <button id="generate-btn" class="btn-primary">Generate Fresh Quiz</button>
+            </div>
+            <div id="score-container" class="score-display" style="display: none;"></div>
+            <div id="quiz-container">
+                <p style="text-align: center; color: #64748b;">Ready to begin your session?</p>
             </div>
         </div>
     </div>
@@ -36,36 +46,55 @@
         document.addEventListener('DOMContentLoaded', () => {
             const btn = document.getElementById('generate-btn');
             const container = document.getElementById('quiz-container');
+            const scoreContainer = document.getElementById('score-container');
 
             btn.addEventListener('click', async () => {
-                container.innerHTML = "<p>Loading questions...</p>";
+                container.innerHTML = "<p style='text-align:center;'>Fetching market data...</p>";
+                scoreContainer.style.display = 'none';
 
                 try {
                     const response = await fetch("/api/quiz", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ topics: "economics" })
+                        headers: { "Content-Type": "application/json" }
                     });
-
-                    if (!response.ok) throw new Error('Network response was not ok');
                     const questions = await response.json();
-
-                    container.innerHTML = "";
                     
+                    container.innerHTML = "";
+                    let score = 0;
+
                     questions.forEach((q, i) => {
                         const div = document.createElement('div');
                         div.className = 'quiz-card';
                         div.innerHTML = `
-                            <h3>${i + 1}. ${q.question}</h3>
-                            <div class="options">
-                                ${q.options.map(opt => `<button class="opt-btn">${opt}</button>`).join('')}
+                            <h3 style="margin-bottom:15px;">${i + 1}. ${q.question}</h3>
+                            <div class="options" id="opts-${i}">
+                                ${q.options.map(opt => `<button class="opt-btn" onclick="checkAnswer(this, '${opt}', '${q.correctAnswer}', ${i})">${opt}</button>`).join('')}
                             </div>
                         `;
                         container.appendChild(div);
                     });
+
+                    window.checkAnswer = (btn, selected, correct, index) => {
+                        const parent = document.getElementById(`opts-${index}`);
+                        const buttons = parent.querySelectorAll('.opt-btn');
+                        
+                        buttons.forEach(b => b.disabled = true); // Prevent double clicking
+                        
+                        if (selected === correct) {
+                            btn.classList.add('correct');
+                            score++;
+                        } else {
+                            btn.classList.add('incorrect');
+                            // Show the correct one
+                            buttons.forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
+                        }
+                        
+                        scoreContainer.style.display = 'block';
+                        scoreContainer.innerText = `Current Session Score: ${score} / ${questions.length}`;
+                    };
+
                 } catch (err) {
-                    container.innerHTML = "<p>Error loading quiz. Please check your connection.</p>";
-                    console.error("Quiz Error:", err);
+                    container.innerHTML = "<p>Server communication error. Check Render logs.</p>";
                 }
             });
         });
