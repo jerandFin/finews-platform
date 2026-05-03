@@ -5,7 +5,7 @@ const app = express();
 // 1. Initialize middleware
 app.use(express.json()); 
 
-// Serve static assets (CSS/JS) from the public folder
+// Serve static assets from the public folder
 app.use(express.static(path.join(__dirname, 'public'))); 
 
 // --- AI QUIZ ROUTE ---
@@ -45,7 +45,7 @@ app.post("/api/quiz", async (req, res) => {
 
     if (data.content && data.content[0] && data.content[0].text) {
         const rawText = data.content[0].text;
-        // Strip Markdown code blocks to prevent JSON.parse errors
+        // Strip markdown code blocks (```json ... ```)
         const cleanedText = rawText.replace(/```json\n?|```/g, '').trim();
 
         try {
@@ -53,15 +53,15 @@ app.post("/api/quiz", async (req, res) => {
             return res.json(quizData);
         } catch (parseError) {
             console.error("JSON Parsing Error. Raw Claude Output:", rawText);
-            return res.status(500).json({ error: "AI returned malformed data. Please try again." });
+            return res.status(500).json({ error: "AI returned malformed data." });
         }
     } else {
-        return res.status(500).json({ error: "Empty or malformed AI response", raw: data });
+        return res.status(500).json({ error: "Empty or malformed AI response" });
     }
     
   } catch (error) {
     console.error("AI Route Error:", error);
-    return res.status(500).json({ error: "AI failed to respond", details: error.message });
+    return res.status(500).json({ error: "AI failed to respond" });
   }
 });
 
@@ -75,13 +75,13 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- THE FIX FOR RENDER PATH ERROR ---
-// Use ':any*' to capture all remaining paths without using restricted regex characters
-app.get('/:any*', (req, res) => {
+// --- 2. THE FINAL CATCH-ALL FIX ---
+// Using a regex (.*) instead of a string '*' to avoid the PathError entirely
+app.get(/^(?!\/api).+/, (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- Start the server ---
+// 3. Start the server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
