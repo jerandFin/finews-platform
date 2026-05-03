@@ -4,12 +4,12 @@ const app = express();
 
 app.use(express.json());
 
-// --- 1. STRICT FILE LOCATION MAPPING ---
-// Maps /public/css/styles.css and /public/js/app.js to your actual folders
+// --- 1. ASSET MAPPING (STRUCTURE B) ---
+// This allows your HTML to use href="/public/style.css" OR href="/css/styles.css"
+// It prioritizes styles and design by making sure the files are found immediately.
 app.use('/public/css', express.static(path.join(__dirname, 'public/css')));
 app.use('/public/js', express.static(path.join(__dirname, 'public/js')));
-
-// Secondary shield for direct root access to assets
+app.use('/public', express.static(path.join(__dirname, 'public/css'))); // Shield for the error in image_e20ac0.jpg
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Stops the favicon 404 console error
@@ -26,7 +26,7 @@ app.get("/api/news", async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "News service failed" });
+    res.status(500).json({ error: "News failed" });
   }
 });
 
@@ -47,7 +47,7 @@ app.post("/api/quiz", (req, res) => {
   res.json(localQuizData);
 });
 
-// --- 4. ROOT-LEVEL INDEPENDENT HTML ---
+// --- 4. ROOT-LEVEL INDEPENDENT HTML (STRUCTURE B) ---
 app.get('/quiz', (req, res) => {
   res.sendFile(path.join(__dirname, 'quiz.html'));
 });
@@ -56,13 +56,14 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- 5. STABILITY MIDDLEWARE (NO PathErrors) ---
+// --- 5. RENDER STABILITY MIDDLEWARE (CONDITION C) ---
+// This handles any other page requests without triggering PathErrors on Render.
 app.use((req, res) => {
-  if (req.path.includes('.')) {
-    return res.status(404).send('Resource missing');
+  if (req.path.includes('.') && !req.path.endsWith('.html')) {
+    return res.status(404).send('Asset not found');
   }
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews: High-Performance Mode on ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews: Operational on port ${PORT}`));
