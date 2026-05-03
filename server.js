@@ -56,10 +56,17 @@ app.post("/api/quiz", (req, res) => {
   res.json(localQuizData);
 });
 
-// --- 4. PAGE ROUTES ---
-// We use path.join to ensure we are pointing directly to the files in public
-app.get('/quiz', (req, res) => res.sendFile(path.join(__dirname, 'public', 'quiz.html')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+// --- 4. THE UPDATED CATCH-ALL ---
+// Use (.*) instead of just * to satisfy the new path-to-regexp requirements
+app.get('/:any(.*)', (req, res) => {
+    // We check if the request is looking for a file (like .css or .js)
+    // if it's not a file, we send the index.html
+    if (req.path.includes('.') && !req.path.endsWith('.html')) {
+        res.status(404).send('File not found');
+    } else {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+});
 
 // --- 5. SMART CATCH-ALL ---
 // This is updated to prevent it from accidentally catching .css or .js files
