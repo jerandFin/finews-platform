@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 10000;
 app.use(express.json());
 
 // --- THE MAPPING LOGIC ---
-// This ensures /public/js/app.js and /public/css/styles.css are served correctly
+// This handles /public/js/app.js and /public/css/styles.css
 app.use("/public", express.static(path.join(__dirname, "public")));
 
 // --- SERVE HTML FROM ROOT ---
@@ -19,10 +19,10 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// --- NEW: SERVE QUIZ PAGE ---
-// Added to handle the link in your nav-inner logic
+// --- FIXED: SERVE QUIZ PAGE ---
+// Based on your confirmation, quiz.html is in the ROOT, not public.
 app.get("/quiz", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "quiz.html"));
+  res.sendFile(path.join(__dirname, "quiz.html")); 
 });
 
 // --- NEWS API ROUTE ---
@@ -70,7 +70,7 @@ app.post("/api/quiz", async (req, res) => {
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-3-sonnet-20240229", // Latest stable version for 2026
+        model: "claude-3-sonnet-20240229",
         max_tokens: 2000,
         messages: [{ role: "user", content: `Generate a structured 5-question multiple choice quiz about ${topics}. Return ONLY JSON format.` }]
       })
