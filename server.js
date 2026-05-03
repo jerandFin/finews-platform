@@ -4,7 +4,7 @@ const app = express();
 
 app.use(express.json());
 
-// 1. STYLE PROTECTOR: Essential for your ASUS/Render design to work
+// 1. STYLE PROTECTOR: Keeps your design from breaking
 app.use((req, res, next) => {
   if (req.url.startsWith('/public/')) {
     req.url = req.url.replace('/public/', '/');
@@ -14,7 +14,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 2. NEWS API ROUTE (STAYS THE SAME - DO NOT TOUCH) ---
+// --- 2. NEWS API ROUTE ---
 app.get("/api/news", async (req, res) => {
   try {
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -29,7 +29,7 @@ app.get("/api/news", async (req, res) => {
   }
 });
 
-// --- 3. NEW GEMINI QUIZ ROUTE ---
+// --- 3. FIXED GEMINI QUIZ ROUTE ---
 app.post("/api/quiz", async (req, res) => {
   const { topics } = req.body;
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
@@ -54,18 +54,18 @@ app.post("/api/quiz", async (req, res) => {
 
     const data = await response.json();
     
-    // Gemini returns text inside candidates[0].content.parts[0].text
     if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-      const rawText = data.candidates[0].content.parts[0].text.trim();
-      // Clean up any accidental markdown Gemini might include
-      const cleanedJson = rawText.replace(/
-```json|```/g, "").trim();
+      let rawText = data.candidates[0].content.parts[0].text.trim();
+      
+      // FIXED LINE: Using split/join instead of regex to avoid the SyntaxError
+      const cleanedJson = rawText.split('```json').join('').split('```').join('').trim();
+      
       res.json(JSON.parse(cleanedJson));
     } else {
       res.status(500).json({ error: "Gemini failed to generate text" });
     }
   } catch (error) {
-    console.error("Gemini Route Error:", error);
+    console.error("Quiz Route Error:", error);
     res.status(500).json({ error: "Quiz Server Error" });
   }
 });
@@ -74,8 +74,8 @@ app.post("/api/quiz", async (req, res) => {
 app.get('/quiz', (req, res) => res.sendFile(path.join(__dirname, 'quiz.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// --- 5. SMART CATCH-ALL: Prevents the "Unexpected token <" error for assets ---
+// --- 5. SMART CATCH-ALL ---
 app.get(/^[^\.]*$/, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews running with Gemini on ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews running on ${PORT}`));
