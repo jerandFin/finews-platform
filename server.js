@@ -3,8 +3,8 @@ const path = require('path');
 const app = express();
 
 // 1. Initialize middleware
-app.use(express.json()); // Essential to read 'topics' from your quiz page
-app.use(express.static(path.join(__dirname, 'public'))); // Serves your HTML/CSS
+app.use(express.json()); 
+app.use(express.static(path.join(__dirname, 'public'))); 
 
 // --- AI QUIZ ROUTE ---
 app.post("/api/quiz", async (req, res) => {
@@ -12,7 +12,7 @@ app.post("/api/quiz", async (req, res) => {
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
   if (!ANTHROPIC_KEY) {
-    console.error("Error: ANTHROPIC_API_KEY is missing from environment variables.");
+    console.error("Error: ANTHROPIC_API_KEY is missing.");
     return res.status(500).json({ error: "Anthropic API key missing" });
   }
 
@@ -35,12 +35,10 @@ app.post("/api/quiz", async (req, res) => {
     });
 
     const data = await response.json();
-    
-    // Log the data to Render console for debugging
     console.log("AI Response Data:", JSON.stringify(data));
     
-    // Send back the specific content block
     if (data.content && data.content[0] && data.content[0].text) {
+        // We parse the text string from Claude into a JSON object for your frontend
         res.json(JSON.parse(data.content[0].text));
     } else {
         res.status(500).json({ error: "Empty or malformed AI response", raw: data });
@@ -52,7 +50,12 @@ app.post("/api/quiz", async (req, res) => {
   }
 });
 
-// 2. Set the port and start the server
+// 2. Catch-all route to serve your index.html for the main page
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 3. Set the port and start the server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
