@@ -4,7 +4,7 @@ const app = express();
 
 app.use(express.json());
 
-// 1. STYLE PROTECTOR: Keeps your design from breaking
+// 1. STYLE PROTECTOR (Foundational for your ASUS/Render design)
 app.use((req, res, next) => {
   if (req.url.startsWith('/public/')) {
     req.url = req.url.replace('/public/', '/');
@@ -14,7 +14,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 2. NEWS API ROUTE ---
+// --- 2. NEWS API ROUTE (STAYS WORKING) ---
 app.get("/api/news", async (req, res) => {
   try {
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -29,45 +29,39 @@ app.get("/api/news", async (req, res) => {
   }
 });
 
-// --- 3. FIXED GEMINI QUIZ ROUTE ---
-app.post("/api/quiz", async (req, res) => {
-  const { topics } = req.body;
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-
-  if (!GEMINI_KEY) return res.status(500).json({ error: "Gemini Key Missing" });
-
-  try {
-    const prompt = `Generate a 5-question multiple choice quiz about ${topics}. 
-    Return ONLY a raw JSON array of objects with "question", "options" (4 strings), and "correctAnswer" (string). 
-    No markdown, no backticks, no text before or after the JSON.`;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      }
-    );
-
-    const data = await response.json();
-    
-    if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-      let rawText = data.candidates[0].content.parts[0].text.trim();
-      
-      // FIXED LINE: Using split/join instead of regex to avoid the SyntaxError
-      const cleanedJson = rawText.split('```json').join('').split('```').join('').trim();
-      
-      res.json(JSON.parse(cleanedJson));
-    } else {
-      res.status(500).json({ error: "Gemini failed to generate text" });
+// --- 3. FOUNDATIONAL QUIZ ROUTE (NO AI NEEDED) ---
+// This serves questions directly from your server to break the 500-error loop.
+app.post("/api/quiz", (req, res) => {
+  const localQuizData = [
+    {
+      question: "What does the 'Law of Demand' suggest?",
+      options: ["Price up, Demand up", "Price up, Demand down", "Supply equals Demand", "Price has no effect"],
+      correctAnswer: "Price up, Demand down"
+    },
+    {
+      question: "Which organization regulates global trade?",
+      options: ["WHO", "IMF", "WTO", "The World Bank"],
+      correctAnswer: "WTO"
+    },
+    {
+      question: "What is 'Inflation'?",
+      options: ["The rise in purchasing power", "The fall in general price levels", "The rise in general price levels", "The growth of the stock market"],
+      correctAnswer: "The rise in general price levels"
+    },
+    {
+      question: "In finance, what does 'ROI' stand for?",
+      options: ["Rate of Inflation", "Return on Investment", "Risk of Interest", "Revenue on Income"],
+      correctAnswer: "Return on Investment"
+    },
+    {
+      question: "Which of these is a 'Fixed Cost' for a business?",
+      options: ["Raw materials", "Hourly wages", "Monthly rent", "Shipping fees"],
+      correctAnswer: "Monthly rent"
     }
-  } catch (error) {
-    console.error("Quiz Route Error:", error);
-    res.status(500).json({ error: "Quiz Server Error" });
-  }
+  ];
+
+  // We return this immediately. No AI, no fetch, no 500 errors.
+  res.json(localQuizData);
 });
 
 // --- 4. PAGE ROUTES ---
@@ -78,4 +72,4 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get(/^[^\.]*$/, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews running on ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews Platform: Stable Local Mode on ${PORT}`));
