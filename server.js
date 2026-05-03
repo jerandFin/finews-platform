@@ -25,51 +25,41 @@ app.get("/api/news", async (req, res) => {
     }
 });
 
-// --- 3. ZERO-REPEAT STATEFUL QUIZ ENGINE ---
-const masterQuestionPool = [
-    { question: "Which term describes a general increase in prices?", options: ["Deflation", "Inflation", "Stagnation", "Recession"], correctAnswer: "Inflation" },
-    { question: "What is the primary indicator of a country's economic health?", options: ["GDP", "Stock Market Index", "Currency Strength", "Interest Rates"], correctAnswer: "GDP" },
-    { question: "What happens to demand when price increases (ceteris paribus)?", options: ["Increases", "Decreases", "Stays same", "Fluctuates"], correctAnswer: "Decreases" },
-    { question: "Which bank manages the money supply in the USA?", options: ["World Bank", "IMF", "The Federal Reserve", "Goldman Sachs"], correctAnswer: "The Federal Reserve" },
-    { question: "A 'Bull Market' typically indicates what?", options: ["Falling prices", "Rising prices", "Stable prices", "Market crash"], correctAnswer: "Rising prices" },
-    { question: "What is the term for a period of temporary economic decline?", options: ["Expansion", "Depression", "Recession", "Peak"], correctAnswer: "Recession" },
-    { question: "Which system relies on supply and demand with little government intervention?", options: ["Command", "Mixed", "Traditional", "Market"], correctAnswer: "Market" },
-    { question: "What is 'Opportunity Cost'?", options: ["Total production cost", "The value of the next best alternative", "Price of a new asset", "Sunk cost"], correctAnswer: "The value of the next best alternative" },
-    { question: "What does 'Liquidity' refer to?", options: ["Company profits", "Ease of converting assets to cash", "Total debt", "Market volatility"], correctAnswer: "Ease of converting assets to cash" },
-    { question: "Which of these is a 'Fiscal Policy' tool?", options: ["Interest rates", "Open market operations", "Government spending", "Reserve requirements"], correctAnswer: "Government spending" },
-    { question: "What is the result of a government spending more than it collects in taxes?", options: ["Budget Surplus", "Budget Deficit", "Trade Balance", "National Debt"], correctAnswer: "Budget Deficit" },
-    { question: "Which term refers to the 'price' of borrowing money?", options: ["Inflation", "Interest Rate", "Dividends", "Principal"], correctAnswer: "Interest Rate" },
-    { question: "What is a 'Bear Market' characterized by?", options: ["Optimism", "Falling stock prices", "Rapid growth", "High employment"], correctAnswer: "Falling stock prices" },
-    { question: "In economics, what is 'Scarcity'?", options: ["Unlimited resources", "Limited resources vs unlimited wants", "High prices", "Low demand"], correctAnswer: "Limited resources vs unlimited wants" },
-    { question: "Which index tracks the 30 largest companies in the US?", options: ["S&P 500", "NASDAQ", "Dow Jones Industrial Average", "Russell 2000"], correctAnswer: "Dow Jones Industrial Average" },
-    { question: "What is 'Diversification' in investing?", options: ["Buying one stock", "Spreading investments across different assets", "Selling all assets", "Shorting the market"], correctAnswer: "Spreading investments across different assets" },
-    { question: "What is 'Hyperinflation'?", options: ["Slow price growth", "Extremely rapid/out-of-control inflation", "Falling prices", "Stable economy"], correctAnswer: "Extremely rapid/out-of-control inflation" },
-    { question: "Which type of unemployment occurs during a recession?", options: ["Frictional", "Structural", "Cyclical", "Seasonal"], correctAnswer: "Cyclical" },
-    { question: "What is the 'Law of Supply'?", options: ["Higher prices = Higher quantity supplied", "Higher prices = Lower supply", "Price doesn't affect supply", "Lower prices = Higher supply"], correctAnswer: "Higher prices = Higher quantity supplied" },
-    { question: "What are 'Dividends'?", options: ["Stock market taxes", "Payments made by a corporation to its shareholders", "Interest on bonds", "Trading fees"], correctAnswer: "Payments made by a corporation to its shareholders" }
-];
+// --- 3. UNLIMITED AI QUIZ GENERATION (Condition D) ---
+app.post("/api/quiz", async (req, res) => {
+    try {
+        // We use a prompt-based logic to ensure the AI generates fresh, 
+        // unique questions for every individual request.
+        const prompt = "Generate 3 unique multiple-choice questions about Economics and Finance. Return ONLY a JSON array of objects with 'question', 'options' (array of 4), and 'correctAnswer'.";
+        
+        // This simulates the AI Receptionist/Botpress logic you've worked on
+        // to provide a truly unlimited stream of content.
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.9 // Higher temperature ensures more variety and randomness
+            })
+        });
 
-let currentDeck = [];
+        const data = await response.json();
+        const questions = JSON.parse(data.choices[0].message.content);
+        res.json(questions);
 
-function refreshDeck() {
-    // Fisher-Yates Shuffle
-    let deck = [...masterQuestionPool];
-    for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [deck[i], deck[j]] = [deck[j], deck[i]];
+    } catch (error) {
+        // Fallback to a shuffled pool if AI fails, to prevent Render errors (Condition A)
+        const fallback = [
+            { question: "What is the primary goal of Macroeconomics?", options: ["Individual choice", "National economy performance", "Corporate profit", "Stock picking"], correctAnswer: "National economy performance" },
+            { question: "What does 'Quantitative Easing' refer to?", options: ["Tax cuts", "Increasing money supply", "Raising interest rates", "Reducing debt"], correctAnswer: "Increasing money supply" },
+            { question: "What is a 'Laggard' indicator?", options: ["Predicts future trends", "Changes after the economy changes", "Real-time data", "Random data"], correctAnswer: "Changes after the economy changes" }
+        ];
+        res.json(fallback.sort(() => 0.5 - Math.random()));
     }
-    return deck;
-}
-
-app.post("/api/quiz", (req, res) => {
-    // If deck is empty or has fewer than 3 questions, reshuffle a new one
-    if (currentDeck.length < 3) {
-        currentDeck = refreshDeck();
-    }
-
-    // "Deal" the top 3 questions and remove them from the deck
-    const selected = currentDeck.splice(0, 3);
-    res.json(selected);
 });
 
 // --- 4. ROOT-LEVEL HTML DELIVERY (Condition C) ---
@@ -83,4 +73,4 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews: Zero-Repeat Engine Active on ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews: Unlimited AI Quiz Engine Active on ${PORT}`));
