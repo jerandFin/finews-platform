@@ -4,13 +4,17 @@ const app = express();
 
 app.use(express.json());
 
-// 1. THE CONSOLE & STYLE CLEANER
-// Stops the 404 favicon error and serves your CSS/Fonts immediately
-app.get('/favicon.ico', (req, res) => res.status(204).end());
+// 1. STYLE & JS PROTECTOR (PATH-SPECIFIC)
+// This correctly maps your subfolders: public/css and public/js
+app.use('/css', express.static(path.join(__dirname, 'public/css')));
+app.use('/js', express.static(path.join(__dirname, 'public/js')));
+// General fallback for any other assets in public
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// --- 2. NEWS API ROUTE (DESIGN PROTECTED) ---
+// Stops the favicon 404 in the console
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+// --- 2. NEWS API ROUTE (STABLE) ---
 app.get("/api/news", async (req, res) => {
   try {
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -21,11 +25,11 @@ app.get("/api/news", async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "News service stable but headlines unavailable" });
+    res.status(500).json({ error: "News failed" });
   }
 });
 
-// --- 3. FOUNDATIONAL QUIZ ROUTE (STABLE) ---
+// --- 3. QUIZ ROUTE (STABLE) ---
 app.post("/api/quiz", (req, res) => {
   const localQuizData = [
     {
@@ -37,30 +41,26 @@ app.post("/api/quiz", (req, res) => {
       question: "Which organization regulates global trade?",
       options: ["WHO", "IMF", "WTO", "The World Bank"],
       correctAnswer: "WTO"
-    },
-    {
-      question: "In finance, what does 'ROI' stand for?",
-      options: ["Rate of Inflation", "Return on Investment", "Risk of Interest", "Revenue on Income"],
-      correctAnswer: "Return on Investment"
     }
   ];
   res.json(localQuizData);
 });
 
-// --- 4. EXPLICIT PAGE ROUTES ---
+// --- 4. ROOT-LEVEL PAGE ROUTES ---
+// Pointing directly to the root directory as per your structure
 app.get('/quiz', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'quiz.html'));
+  res.sendFile(path.join(__dirname, 'quiz.html'));
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- 5. THE ULTIMATE CATCH-ALL ---
-// Compatible with Node v24.14.1 on Render
+// --- 5. MODERN CATCH-ALL (STABILITY FIX) ---
+// Redirects any other page requests to index.html in the root
 app.get(/^((?!\.).)*$/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews Platform: High-Performance Mode on ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews Platform: Root Mode Active on ${PORT}`));
