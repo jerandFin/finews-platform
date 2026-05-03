@@ -2,10 +2,9 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
-// 1. Initialize middleware
 app.use(express.json()); 
 
-// Serve static assets from the public folder
+// 1. CRITICAL: Serve the 'public' folder so the server can see 'css' and 'js'
 app.use(express.static(path.join(__dirname, 'public'))); 
 
 // --- AI QUIZ ROUTE ---
@@ -13,10 +12,7 @@ app.post("/api/quiz", async (req, res) => {
   const { topics } = req.body;
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
-  if (!ANTHROPIC_KEY) {
-    console.error("Error: ANTHROPIC_API_KEY is missing.");
-    return res.status(500).json({ error: "Anthropic API key missing" });
-  }
+  if (!ANTHROPIC_KEY) return res.status(500).json({ error: "Key missing" });
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -31,42 +27,24 @@ app.post("/api/quiz", async (req, res) => {
         max_tokens: 2000,
         messages: [{ 
           role: "user", 
-          content: `Generate a structured 5-question multiple choice quiz about ${topics}. Return ONLY a JSON array of objects with 'question', 'options' (array of 4 strings), and 'correctAnswer' (string matching the correct option) keys. Do not include any conversational text.` 
+          content: `Generate a 5-question multiple choice quiz about ${topics}. Return ONLY a JSON array. No conversational text.` 
         }]
       })
     });
 
     const data = await response.json();
-    
-    if (!response.ok) {
-        console.error("Anthropic API Error:", data);
-        return res.status(response.status).json({ error: "AI API Error", details: data });
-    }
-
-    if (data.content && data.content[0] && data.content[0].text) {
-        const rawText = data.content[0].text;
-        // Strip markdown code blocks (```json ... ```)
-        const cleanedText = rawText.replace(/```json\n?|```/g, '').trim();
-
-        try {
-            const quizData = JSON.parse(cleanedText);
-            return res.json(quizData);
-        } catch (parseError) {
-            console.error("JSON Parsing Error. Raw Claude Output:", rawText);
-            return res.status(500).json({ error: "AI returned malformed data." });
-        }
+    if (data.content && data.content[0]?.text) {
+        const cleanedText = data.content[0].text.replace(/```json\n?|```/g, '').trim();
+        res.json(JSON.parse(cleanedText));
     } else {
-        return res.status(500).json({ error: "Empty or malformed AI response" });
+        res.status(500).json({ error: "AI error" });
     }
-    
   } catch (error) {
-    console.error("AI Route Error:", error);
-    return res.status(500).json({ error: "AI failed to respond" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// --- PAGE ROUTES ---
-
+// --- PAGE ROUTES (Pointing to your root files) ---
 app.get('/quiz', (req, res) => {
   res.sendFile(path.join(__dirname, 'quiz.html'));
 });
@@ -75,14 +53,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- 2. THE FINAL CATCH-ALL FIX ---
-// Using a regex (.*) instead of a string '*' to avoid the PathError entirely
-app.get(/^(?!\/api).+/, (req, res) => {
+// --- THE SMART CATCH-ALL ---
+// This ignores files with dots (.css, .js) so they load from the 'public' folder instead
+app.get(/^[^\.]*$/, (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 3. Start the server
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
