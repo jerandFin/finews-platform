@@ -4,6 +4,8 @@ const app = express();
 
 // 1. Initialize middleware
 app.use(express.json()); 
+
+// Serve static assets (CSS/JS) from the public folder
 app.use(express.static(path.join(__dirname, 'public'))); 
 
 // --- AI QUIZ ROUTE ---
@@ -35,10 +37,9 @@ app.post("/api/quiz", async (req, res) => {
     });
 
     const data = await response.json();
-    console.log("AI Response Data:", JSON.stringify(data));
     
     if (data.content && data.content[0] && data.content[0].text) {
-        // We parse the text string from Claude into a JSON object for your frontend
+        // Parse the text string from Claude into a JSON object
         res.json(JSON.parse(data.content[0].text));
     } else {
         res.status(500).json({ error: "Empty or malformed AI response", raw: data });
@@ -50,12 +51,24 @@ app.post("/api/quiz", async (req, res) => {
   }
 });
 
-// 2. Catch-all route to serve your index.html for the main page
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// --- PAGE ROUTES ---
+
+// Specific route for quiz.html since it is in the root
+app.get('/quiz', (req, res) => {
+  res.sendFile(path.join(__dirname, 'quiz.html'));
 });
 
-// 3. Set the port and start the server
+// Route for index.html since it is in the root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// 2. Catch-all route (must be last)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// 3. Start the server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
