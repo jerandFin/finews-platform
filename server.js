@@ -5,17 +5,19 @@ const app = express();
 app.use(express.json());
 
 // --- 1. PRIORITY ASSET MAPPING (Condition A & B) ---
-// Directly maps your folders to prevent 'text/html' MIME errors on your styles
+// Maps your styles and scripts to their specific folders within 'public'
+// This prevents MIME type errors (text/html) on Render
 app.use('/public/css', express.static(path.join(__dirname, 'public/css')));
 app.use('/public/js', express.static(path.join(__dirname, 'public/js')));
 
-// Universal fallback for any other public assets
+// General fallback for any other static assets in the public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Prevents favicon 404 logs in Render console
+// Silences favicon 404 errors in the Render console
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // --- 2. NEWS & DESIGN API (Priority A) ---
+// Core functionality: Fetches market and finance news
 app.get("/api/news", async (req, res) => {
     try {
         const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -30,7 +32,8 @@ app.get("/api/news", async (req, res) => {
     }
 });
 
-
+// --- 3. DYNAMIC QUIZ LOGIC ---
+// Shuffles and serves 3 random questions per session
 app.post("/api/quiz", (req, res) => {
     const questionPool = [
         { question: "Which term describes a general increase in prices?", options: ["Deflation", "Inflation", "Stagnation", "Recession"], correctAnswer: "Inflation" },
@@ -41,7 +44,6 @@ app.post("/api/quiz", (req, res) => {
         { question: "What is the term for a period of temporary economic decline?", options: ["Expansion", "Depression", "Recession", "Peak"], correctAnswer: "Recession" }
     ];
 
-    // EXPERT FIX: Shuffles the pool and picks 3 random questions
     const shuffled = questionPool.sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, 3);
     
@@ -49,7 +51,7 @@ app.post("/api/quiz", (req, res) => {
 });
 
 // --- 4. ROOT-LEVEL HTML DELIVERY (Condition B) ---
-// Serves your index.html and quiz.html from the main root directory
+// Delivers HTML files located in your root directory
 app.get('/quiz', (req, res) => {
     res.sendFile(path.join(__dirname, 'quiz.html'));
 });
@@ -59,7 +61,7 @@ app.get('/', (req, res) => {
 });
 
 // --- 5. RENDER STABILITY (Condition C) ---
-// Prevents Render PathErrors by handling unknown routes gracefully
+// Handles client-side routing and unknown paths gracefully
 app.use((req, res) => {
     if (req.path.includes('.')) {
         return res.status(404).send('Resource not found');
@@ -69,5 +71,5 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-    console.log(`FinNews: High-Priority Styles & News Active on Port ${PORT}`);
+    console.log(`FinNews: Operational on Port ${PORT}`);
 });
