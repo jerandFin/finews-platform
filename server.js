@@ -4,17 +4,18 @@ const app = express();
 
 app.use(express.json());
 
-// 1. STYLE & JS PROTECTOR (PATH-SPECIFIC)
-// This correctly maps your subfolders: public/css and public/js
-app.use('/css', express.static(path.join(__dirname, 'public/css')));
-app.use('/js', express.static(path.join(__dirname, 'public/js')));
-// General fallback for any other assets in public
+// --- 1. DIRECTORY & STYLE PRIORITIZATION ---
+// This handles your specific structure: /public/css/styles.css and /public/js/app.js
+// We map the '/public' URL path directly to your 'public' folder.
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
+// This acts as a secondary shield to ensure styles load even if the '/public' prefix is missing
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Stops the favicon 404 in the console
+// Stops the favicon 404 error from cluttering your console
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
-// --- 2. NEWS API ROUTE (STABLE) ---
+// --- 2. NEWS API ROUTE (DESIGN CRITICAL) ---
 app.get("/api/news", async (req, res) => {
   try {
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -25,11 +26,11 @@ app.get("/api/news", async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "News failed" });
+    res.status(500).json({ error: "News service is online but headlines failed to fetch." });
   }
 });
 
-// --- 3. QUIZ ROUTE (STABLE) ---
+// --- 3. FOUNDATIONAL QUIZ ROUTE ---
 app.post("/api/quiz", (req, res) => {
   const localQuizData = [
     {
@@ -41,13 +42,18 @@ app.post("/api/quiz", (req, res) => {
       question: "Which organization regulates global trade?",
       options: ["WHO", "IMF", "WTO", "The World Bank"],
       correctAnswer: "WTO"
+    },
+    {
+      question: "In finance, what does 'ROI' stand for?",
+      options: ["Rate of Inflation", "Return on Investment", "Risk of Interest", "Revenue on Income"],
+      correctAnswer: "Return on Investment"
     }
   ];
   res.json(localQuizData);
 });
 
-// --- 4. ROOT-LEVEL PAGE ROUTES ---
-// Pointing directly to the root directory as per your structure
+// --- 4. ROOT-LEVEL HTML ROUTES ---
+// Since your HTML files are in the main root, we point to them directly.
 app.get('/quiz', (req, res) => {
   res.sendFile(path.join(__dirname, 'quiz.html'));
 });
@@ -56,11 +62,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- 5. MODERN CATCH-ALL (STABILITY FIX) ---
-// Redirects any other page requests to index.html in the root
-app.get(/^((?!\.).)*$/, (req, res) => {
+// --- 5. THE "SAFE-ROUTE" CATCH-ALL ---
+// We use a middleware function instead of a wildcard '*' to avoid Render's PathErrors.
+app.use((req, res) => {
+  // If the request is for a file (like .css or .js) but wasn't found in Step 1
+  if (req.path.includes('.')) {
+    return res.status(404).send('Resource not found');
+  }
+  // For any other page navigation, default to the root index.html
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews Platform: Root Mode Active on ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews Platform: Operational on port ${PORT}`));
