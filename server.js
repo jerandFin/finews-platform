@@ -4,14 +4,9 @@ const app = express();
 
 app.use(express.json());
 
-// 1. STYLE PROTECTOR (Foundational for your ASUS/Render design)
-app.use((req, res, next) => {
-  if (req.url.startsWith('/public/')) {
-    req.url = req.url.replace('/public/', '/');
-  }
-  next();
-});
-
+// 1. STYLE & STATIC PROTECTOR
+// We explicitly tell the server to look in 'public' for any folder-based requests first.
+app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. NEWS API ROUTE (STAYS WORKING) ---
@@ -29,8 +24,7 @@ app.get("/api/news", async (req, res) => {
   }
 });
 
-// --- 3. FOUNDATIONAL QUIZ ROUTE (NO AI NEEDED) ---
-// This serves questions directly from your server to break the 500-error loop.
+// --- 3. FOUNDATIONAL QUIZ ROUTE ---
 app.post("/api/quiz", (req, res) => {
   const localQuizData = [
     {
@@ -59,17 +53,23 @@ app.post("/api/quiz", (req, res) => {
       correctAnswer: "Monthly rent"
     }
   ];
-
-  // We return this immediately. No AI, no fetch, no 500 errors.
   res.json(localQuizData);
 });
 
 // --- 4. PAGE ROUTES ---
-app.get('/quiz', (req, res) => res.sendFile(path.join(__dirname, 'quiz.html')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// We use path.join to ensure we are pointing directly to the files in public
+app.get('/quiz', (req, res) => res.sendFile(path.join(__dirname, 'public', 'quiz.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // --- 5. SMART CATCH-ALL ---
-app.get(/^[^\.]*$/, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// This is updated to prevent it from accidentally catching .css or .js files
+app.get('*', (req, res) => {
+  if (req.path.includes('.')) {
+    res.status(404).send('File not found');
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+});
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`FinNews Platform: Stable Local Mode on ${PORT}`));
