@@ -1,3 +1,19 @@
+<!-- Ensure your HTML body contains these EXACT IDs -->
+<div id="screen-topics" class="screen active">...</div>
+<div id="screen-loading" class="screen">...</div>
+<div id="screen-quiz" class="screen">
+    <div id="q-text"></div>
+    <div id="progress-label"></div>
+    <div id="options-list"></div>
+    <div id="explanation-box" style="display:none;"></div>
+    <button id="next-btn" style="display:none;">Next</button>
+</div>
+<div id="screen-result" class="screen">
+    <div id="result-rank"></div>
+    <div id="result-title"></div>
+    <div id="result-subtitle"></div>
+</div>
+
 <script>
   let selectedTopics = [];
   let questions = [];
@@ -5,94 +21,75 @@
   let score = 0;
   let answered = false;
 
-  // Topic selection logic
+  // 1. Topic Selection Logic
   document.querySelectorAll('.topic-card').forEach(card => {
     card.addEventListener('click', () => {
       card.classList.toggle('selected');
       selectedTopics = Array.from(document.querySelectorAll('.topic-card.selected')).map(c => c.dataset.topic);
-      if(selectedTopics.length > 0) document.getElementById('topic-error').style.display = 'none';
+      const errorBox = document.getElementById('topic-error');
+      if(errorBox && selectedTopics.length > 0) errorBox.style.display = 'none';
     });
   });
 
-  // Start button logic
+  // 2. Start Quiz Logic
   document.getElementById('start-btn').addEventListener('click', async () => {
     if (selectedTopics.length === 0) {
-      document.getElementById('topic-error').style.display = 'block';
+      const errorBox = document.getElementById('topic-error');
+      if(errorBox) errorBox.style.display = 'block';
       return;
     }
     showScreen('screen-loading');
     await generateQuestions();
   });
 
+  // 3. AI Communication (The "Engine")
   async function generateQuestions() {
-    const topicStr = selectedTopics.join(', ');
     try {
       const response = await fetch("/api/quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topics: topicStr })
+        body: JSON.stringify({ topics: selectedTopics.join(', ') })
       });
 
       const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || `Server Error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(data.error || "Server error");
 
-      // Check if data.content exists (Anthropic specific structure)
-      if (!data.content || !data.content[0]) {
-        console.error("Data received:", data);
-        throw new Error("AI returned no content. Check API credits/keys.");
-      }
+      // Verify Anthropic structure
+      if (!data.content || !data.content[0]) throw new Error("Empty AI response");
       
       const rawText = data.content[0].text;
       const jsonMatch = rawText.match(/\[[\s\S]*\]/); 
-      
-      if (!jsonMatch) {
-        throw new Error("AI response format was invalid.");
-      }
+      if (!jsonMatch) throw new Error("Could not find quiz data in AI response");
       
       questions = JSON.parse(jsonMatch[0]);
-
-      if (questions.length === 0) throw new Error("No questions generated.");
+      if (questions.length === 0) throw new Error("Zero questions generated");
 
       current = 0; 
       score = 0;
       showScreen('screen-quiz');
       showQuestion();
     } catch (err) {
-      console.error("CRITICAL FAILURE:", err);
+      console.error("Quiz Generation Failed:", err);
       alert("Error: " + err.message);
       showScreen('screen-topics');
     }
   }
 
+  // 4. UI Rendering Logic
   function showQuestion() {
     answered = false;
     const q = questions[current];
-    
-    // Safety check to prevent white screen
-    if (!q) {
-      console.error("Question at index " + current + " is missing.");
-      return;
-    }
+    if (!q) return;
 
-    // SUPPORT FOR DIFFERENT AI PROPERTY NAMES
-    const questionText = q.question || q.text || "Question content missing";
+    // Mapping different possible AI key names
+    const questionText = q.question || q.text || "Question Missing";
     const options = q.options || q.choices || q.answers || [];
     const correctAnswer = (q.answer !== undefined) ? q.answer : q.correctIndex;
 
-    const qTextElem = document.getElementById('q-text');
-    const progLabel = document.getElementById('progress-label');
+    document.getElementById('q-text').textContent = questionText;
+    document.getElementById('progress-label').textContent = `Question ${current + 1} of ${questions.length}`;
+    
     const optList = document.getElementById('options-list');
-
-    if (!qTextElem || !optList) {
-        console.error("UI Elements not found! Check your HTML IDs.");
-        return;
-    }
-
-    qTextElem.textContent = questionText;
-    progLabel.textContent = `Question ${current + 1} of ${questions.length}`;
     optList.innerHTML = '';
     
     options.forEach((opt, idx) => {
@@ -103,7 +100,6 @@
         if(answered) return;
         answered = true;
         
-        // Match by index or by string text
         const isCorrect = (idx === correctAnswer) || (opt.trim() === String(correctAnswer).trim());
         
         if(isCorrect) {
@@ -111,16 +107,17 @@
           score += 10;
         } else {
           btn.classList.add('wrong');
-          // Highlight correct one
+          // Highlight correct answer
           Array.from(optList.children).forEach((child, cIdx) => {
             if(cIdx === correctAnswer || child.textContent.trim() === String(correctAnswer).trim()) {
               child.classList.add('correct');
             }
           });
         }
+        
         document.getElementById('score-val').textContent = score;
         const expBox = document.getElementById('explanation-box');
-        expBox.innerHTML = `<strong>Explanation:</strong><br>${q.explanation || "No explanation provided."}`;
+        expBox.innerHTML = `<strong>Explanation:</strong><br>${q.explanation || "No further details."}`;
         expBox.style.display = 'block';
         document.getElementById('next-btn').style.display = 'block';
       };
@@ -128,6 +125,7 @@
     });
   }
 
+  // 5. Navigation
   document.getElementById('next-btn').addEventListener('click', () => {
     current++;
     if (current < questions.length) {
@@ -144,8 +142,7 @@
     const total = questions.length * 10;
     const pct = (score / total) * 100;
     
-    let rank = 'B'; 
-    let title = 'Business Student';
+    let rank = 'B'; let title = 'Business Student';
     if(pct >= 90) { rank = 'S'; title = 'Economic Mastermind'; }
     else if(pct >= 70) { rank = 'A'; title = 'Market Analyst'; }
 
@@ -157,6 +154,10 @@
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(id);
-    if (target) target.classList.add('active');
+    if (target) {
+        target.classList.add('active');
+        // Final fallback: scroll to top of the screen on change
+        window.scrollTo(0,0);
+    }
   }
 </script>
