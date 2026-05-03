@@ -4,7 +4,7 @@ const app = express();
 
 app.use(express.json());
 
-// 1. REDIRECT FIX: Keeps your styles and design from breaking
+// 1. STYLE PROTECTOR: Essential for your ASUS/Render design to work
 app.use((req, res, next) => {
   if (req.url.startsWith('/public/')) {
     req.url = req.url.replace('/public/', '/');
@@ -12,49 +12,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// 2. STATIC FILES: Serves your CSS and JS folders
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 3. AI QUIZ ROUTE (MOVED UP TO FIX 404) ---
-app.post("/api/quiz", async (req, res) => {
-  const { topics } = req.body;
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-
-  if (!ANTHROPIC_KEY) {
-    return res.status(500).json({ error: "Key Missing" });
-  }
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-sonnet-20240620", 
-        max_tokens: 2000,
-        messages: [{ 
-          role: "user", 
-          content: `Generate a 5-question multiple choice quiz about ${topics}. Return ONLY a JSON array.` 
-        }]
-      })
-    });
-
-    const data = await response.json();
-    if (data.content && data.content[0]?.text) {
-        const cleanedText = data.content[0].text.replace(/```json\n?|```/g, '').trim();
-        res.json(JSON.parse(cleanedText));
-    } else {
-        res.status(500).json({ error: "AI Error" });
-    }
-  } catch (error) {
-    res.status(500).json({ error: "Server Error" });
-  }
-});
-
-// --- 4. NEWS API ROUTE (STAYS THE SAME) ---
+// --- 2. NEWS API ROUTE (STAYS THE SAME - DO NOT TOUCH) ---
 app.get("/api/news", async (req, res) => {
   try {
     const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -69,12 +29,53 @@ app.get("/api/news", async (req, res) => {
   }
 });
 
-// --- 5. PAGE ROUTES ---
+// --- 3. NEW GEMINI QUIZ ROUTE ---
+app.post("/api/quiz", async (req, res) => {
+  const { topics } = req.body;
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+
+  if (!GEMINI_KEY) return res.status(500).json({ error: "Gemini Key Missing" });
+
+  try {
+    const prompt = `Generate a 5-question multiple choice quiz about ${topics}. 
+    Return ONLY a raw JSON array of objects with "question", "options" (4 strings), and "correctAnswer" (string). 
+    No markdown, no backticks, no text before or after the JSON.`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+
+    const data = await response.json();
+    
+    // Gemini returns text inside candidates[0].content.parts[0].text
+    if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+      const rawText = data.candidates[0].content.parts[0].text.trim();
+      // Clean up any accidental markdown Gemini might include
+      const cleanedJson = rawText.replace(/
+```json|```/g, "").trim();
+      res.json(JSON.parse(cleanedJson));
+    } else {
+      res.status(500).json({ error: "Gemini failed to generate text" });
+    }
+  } catch (error) {
+    console.error("Gemini Route Error:", error);
+    res.status(500).json({ error: "Quiz Server Error" });
+  }
+});
+
+// --- 4. PAGE ROUTES ---
 app.get('/quiz', (req, res) => res.sendFile(path.join(__dirname, 'quiz.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// --- 6. SMART CATCH-ALL (STAYS THE SAME) ---
+// --- 5. SMART CATCH-ALL: Prevents the "Unexpected token <" error for assets ---
 app.get(/^[^\.]*$/, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews running on ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews running with Gemini on ${PORT}`));
