@@ -18,7 +18,6 @@ body {
   background-color: #f9f9f9;
 }
 
-/* ... keep the rest of your code below this ... */
 /* --- HEADER & NAVIGATION --- */
 .site-header {
   background-color: var(--color-primary);
@@ -35,7 +34,6 @@ body {
   align-items: center;
 }
 
-/* Added to ensure brand text stays white */
 .header-brand {
   color: #ffffff;
 }
@@ -66,7 +64,6 @@ body {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
-/* FIX: Updated to handle buttons directly inside nav-inner */
 .nav-inner {
   max-width: 1200px;
   margin: 0 auto;
@@ -74,11 +71,10 @@ body {
   display: flex;
   justify-content: flex-start; 
   align-items: center;
-  overflow-x: auto; /* Allows scrolling on small screens */
+  overflow-x: auto;
   gap: 10px;
 }
 
-/* FIX: Ensure the Quiz button stays on the far right */
 .quiz-nav-btn {
   margin-left: auto; 
   padding: 8px 16px;
@@ -103,7 +99,6 @@ body {
   cursor: pointer;
   border-bottom: 3px solid transparent;
   transition: all 0.2s ease;
-  white-space: nowrap;
 }
 
 .nav-btn:hover, .nav-btn.active {
@@ -111,15 +106,60 @@ body {
   border-bottom: 3px solid var(--color-primary);
 }
 
+/* --- FEATURED BANNER --- */
+.featured-banner {
+  max-width: 1200px;
+  margin: 20px auto;
+  position: relative;
+  height: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.featured-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.featured-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 40px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.9));
+  color: white;
+}
+
 /* --- ARTICLES GRID --- */
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px;
+}
+
 .articles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 30px;
-  margin-top: 20px;
 }
 
-/* Fix for article images so they don't look broken */
+.article-card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.article-card:hover {
+  transform: translateY(-5px);
+}
+
 .article-image {
   width: 100%;
   height: 200px;
@@ -127,17 +167,16 @@ body {
   background-color: #eee;
 }
 
-.article-content {
-  padding: 20px;
-}
-.article-card {
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: transform 0.2s ease;
+/* --- SKELETON LOADING ANIMATION --- */
+.skeleton {
+  background: #eee;
+  background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
+  background-size: 200% 100%;
+  animation: 1.5s shine linear infinite;
 }
 
-.article-card:hover {
-  transform: translateY(-5px);
+@keyframes shine {
+  to { background-position-x: -200%; }
 }
+
+.skeleton-image { height: 200px; width: 100%; }
