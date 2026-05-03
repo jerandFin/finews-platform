@@ -30,7 +30,6 @@ app.get("/api/news", async (req, res) => {
     }
 });
 
-// --- Update only Section 3 in your existing server.js ---
 
 app.post("/api/quiz", (req, res) => {
     const questionPool = [
