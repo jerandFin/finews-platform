@@ -76,7 +76,7 @@ function buildFeaturedBanner(article) {
   featuredBanner.style.display = "block";
 }
 
-// --- STEP 6: Fetch news from server ---
+// --- STEP 6: Fetch news from server (FIXED WITH TIMESTAMP) ---
 async function fetchNews(category = "business") {
   currentCategory = category;
   if (searchInput) searchInput.value = "";
@@ -88,13 +88,12 @@ async function fetchNews(category = "business") {
   if (articlesGrid) articlesGrid.innerHTML = "";
 
   try {
-    // THE FIX: Changed from '/news' to '/api/news' to match your server.js
-    const response = await fetch(`/api/news?category=${category}`);
+    // THE FIX: Added &t=${Date.now()} to bypass the browser cache
+    const response = await fetch(`/api/news?category=${category}&t=${Date.now()}`);
     const data = await response.json();
 
     if (loadingState) loadingState.style.display = "none";
 
-    // Standardized check for data.articles existence
     if (data.articles && data.articles.length > 0) {
       allArticles = data.articles;
       buildFeaturedBanner(allArticles[0]);
@@ -144,8 +143,7 @@ function createArticleCard(article, isSavedView = false) {
     </div>
   `;
 
-  const btnClass = isSavedView ? ".remove-btn" : ".bookmark-btn";
-  const btnElement = card.querySelector(btnClass);
+  const btnElement = card.querySelector(isSavedView ? ".remove-btn" : ".bookmark-btn");
   
   if (btnElement) {
     btnElement.addEventListener("click", () => {
@@ -169,12 +167,11 @@ function createArticleCard(article, isSavedView = false) {
   return card;
 }
 
-// --- STEP 8: Navigation Logic ---
+// --- STEP 8: Navigation & REFRESH Logic ---
 navButtons.forEach(button => {
   button.addEventListener("click", (e) => {
-    // Check if it's the Quiz link or button
     if (button.getAttribute("href") === "/quiz" || button.classList.contains("quiz-nav-btn")) {
-      return; // Let the browser handle the navigation to the quiz page
+      return; 
     }
 
     e.preventDefault();
@@ -190,6 +187,15 @@ navButtons.forEach(button => {
   });
 });
 
+// THE FIX: Listen for your "Refresh Now" button specifically
+const refreshBtn = document.getElementById('refresh-now');
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        fetchNews(currentCategory);
+    });
+}
+
 function displayReadingList() {
   if (!articlesGrid) return;
   articlesGrid.innerHTML = "";
@@ -204,7 +210,6 @@ function displayReadingList() {
 }
 
 // --- STEP 9: Initialize ---
-// Only fetch news if we are on the main news grid page
 if (articlesGrid) {
   fetchNews("business");
 }
