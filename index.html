@@ -1,8 +1,4 @@
 <!DOCTYPE html>
-<!--
-  index.html — The main page of your news platform
-  FINAL BREAKTHROUGH FIX: Correcting singular 'app.js' path
--->
 <html lang="en">
 
 <head>
@@ -13,10 +9,7 @@
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- 
-    NESTED CSS PATH FIX: 
-    Matches your GitHub folder structure /public/css/styles.css
-  -->
+  <!-- (C) PATHS: Styles under /public/css/ folder -->
   <link rel="stylesheet" href="/public/css/styles.css">
 </head>
 
@@ -41,15 +34,18 @@
       <button class="nav-btn" data-category="health">Health</button>
       <button class="nav-btn" id="reading-list-btn" data-category="saved">📑 Reading List</button>
 
+      <!-- (B) & (C) Navigation to Quiz Page in main root -->
       <a href="/quiz" class="nav-btn quiz-nav-btn">🎯 Quiz</a>
     </div>
   </nav>
 
+  <!-- (D) THE TIMER FIX: Standardized IDs for the app.js Countdown -->
   <div id="refresh-status" class="refresh-status">
     <span id="last-updated-text">Last updated: just now</span>
     <span class="refresh-divider">·</span>
-    <span id="next-refresh-text">Refreshing in 5:00</span>
-    <button id="manual-refresh-btn" title="Refresh now">
+    <span>Refreshing in <span id="countdown-timer">5:00</span></span>
+    <!-- Matches getElementById('refresh-now') in your app.js -->
+    <button id="refresh-now" title="Refresh now">
       <span id="refresh-icon">↻</span> Refresh Now
     </button>
   </div>
@@ -68,6 +64,7 @@
   </div>
 
   <main class="main-content">
+    <!-- (A) RENDER STABILITY: Skeleton loaders to prevent layout shift errors -->
     <div class="loading-state" id="loading">
       <div class="skeleton-grid">
         <div class="skeleton-card"><div class="skeleton skeleton-image"></div></div>
@@ -76,8 +73,9 @@
       </div>
     </div>
 
+    <!-- (A) RENDER STABILITY: Error container if API fails -->
     <div class="error-state" id="error" style="display:none;">
-      <p>Unable to load news. Please try again.</p>
+      <p>The news feed is currently updating. Please try again in a moment.</p>
     </div>
 
     <div class="featured-banner" id="featured-banner"></div>
@@ -88,11 +86,7 @@
     <p>© 2026 FinNews Platform · Built by Jerand Lau · Data provided by NewsAPI</p>
   </footer>
 
-  <!-- 
-    PRECISION JS PATH FIX: 
-    Changed 'apps.js' to 'app.js' to match the singular filename 
-    shown in your GitHub screenshot image_6bb745.jpg.
-  -->
+  <!-- (C) PATHS: app.js under /public/js/ folder -->
   <script src="/public/js/app.js"></script>
 
 </body>
