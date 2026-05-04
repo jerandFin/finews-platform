@@ -8,11 +8,11 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- (C.1) Link to core styles in public/css/styles.css -->
+    <!-- (C) File Hierarchy: Core styles under public/css/ -->
     <link rel="stylesheet" href="/public/css/styles.css">
 
     <style>
-        /* (B) Specific Quiz Enhancements — Preserving core design identity */
+        /* (B) Quiz Design Prioritization */
         .quiz-container-inner { max-width: 800px; margin: 40px auto; padding: 0 20px; }
         
         .quiz-header { text-align: center; margin-bottom: 50px; }
@@ -94,7 +94,7 @@
 
         <div id="score-display" class="score-banner" style="display: none;"></div>
         <div id="quiz-wrapper">
-            <!-- Questions load here -->
+            <!-- Dynamic Content -->
         </div>
     </main>
 
@@ -105,19 +105,20 @@
         let sessionScore = 0;
 
         btn.addEventListener('click', async () => {
-            wrapper.innerHTML = "<p style='text-align:center;'>Accessing Market Intelligence...</p>";
+            // (A) Immediate UI Reset for Stability
+            wrapper.innerHTML = "<p style='text-align:center;'>Accessing fresh market data...</p>";
             scoreDisplay.style.display = 'none';
             sessionScore = 0;
             
             try {
-                // (D) Cache-Buster: Adding a timestamp (?t=) ensures Render 
-                // and your browser never show repetitive "cached" questions.
+                // (D) THE FIX: Timestamp ensures every request URL is unique
                 const res = await fetch(`/api/quiz?t=${Date.now()}`, { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
                 const questions = await res.json();
                 
+                // Wipe the loading message
                 wrapper.innerHTML = "";
 
                 questions.forEach((q, qIdx) => {
@@ -136,10 +137,10 @@
                     wrapper.appendChild(card);
                 });
 
+                // (D) Answer selection logic with repeat prevention
                 window.handleSelect = (btn, selected, correct, qIdx, total) => {
                     const grid = document.getElementById(`grid-${qIdx}`);
                     const buttons = grid.querySelectorAll('.opt-btn');
-                    
                     buttons.forEach(b => b.disabled = true);
                     
                     if (selected === correct) {
@@ -151,14 +152,12 @@
                             if (b.innerText.trim() === correct) b.classList.add('correct');
                         });
                     }
-                    
                     scoreDisplay.style.display = 'block';
                     scoreDisplay.innerText = `Session Accuracy: ${sessionScore} / ${total}`;
                 };
-
             } catch (err) {
-                // (A) Graceful error handling for Render stability
-                wrapper.innerHTML = "<p style='color:red; text-align:center;'>Connection Timeout. Please refresh the page.</p>";
+                // (A) Error Handling for Render
+                wrapper.innerHTML = "<p style='color:red; text-align:center;'>Render Connection Error. Please refresh and try again.</p>";
             }
         });
     </script>
