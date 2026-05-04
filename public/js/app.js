@@ -1,5 +1,5 @@
 // ============================================
-// app.js — FinNews Platform Frontend (Countdown Fix)
+// app.js — FinNews Platform Frontend
 // ============================================
 
 // --- STEP 1: Connect to page elements ---
@@ -9,11 +9,11 @@ const errorState = document.getElementById("error");
 const currentDateEl = document.getElementById("current-date");
 const navButtons = document.querySelectorAll(".nav-btn");
 const featuredBanner = document.getElementById("featured-banner");
-const countdownEl = document.getElementById("countdown-timer"); // Ensure this ID is in your index.html
+const countdownEl = document.getElementById("countdown-timer"); // The countdown span
 
-// Search bar elements
 const searchInput = document.getElementById("search-input");
 const searchBtn = document.getElementById("search-btn");
+const clearBtn = document.getElementById("clear-btn");
 
 // --- STEP 2: Display today's date ---
 const today = new Date();
@@ -25,17 +25,34 @@ if (currentDateEl) currentDateEl.textContent = formattedDate;
 // --- STEP 3: Track current state ---
 let currentCategory = "business";
 let allArticles = [];
-let timeLeft = 300; // 5 minutes in seconds
+let timeLeft = 300; // 5 minutes
 let timerId = null;
 
-// --- STEP 4: Reading List Storage (Preserved) ---
+// --- STEP 4: Reading List Storage (STAYS THE SAME) ---
 function getSavedArticles() {
   const saved = localStorage.getItem("finnews-saved");
   return saved ? JSON.parse(saved) : [];
 }
-// ... (Keep your saveArticle/removeArticle/isArticleSaved functions here)
 
-// --- STEP 5: Build Featured Banner (Preserved) ---
+function saveArticle(article) {
+  const saved = getSavedArticles();
+  if (!saved.find(a => a.url === article.url)) {
+    saved.push(article);
+    localStorage.setItem("finnews-saved", JSON.stringify(saved));
+  }
+}
+
+function removeArticle(articleUrl) {
+  const saved = getSavedArticles();
+  const updated = saved.filter(a => a.url !== articleUrl);
+  localStorage.setItem("finnews-saved", JSON.stringify(updated));
+}
+
+function isArticleSaved(articleUrl) {
+  return getSavedArticles().some(a => a.url === articleUrl);
+}
+
+// --- STEP 5: Build the Featured Banner (STAYS THE SAME) ---
 function buildFeaturedBanner(article) {
   if (!article || !featuredBanner) {
     if (featuredBanner) featuredBanner.style.display = "none";
@@ -46,30 +63,31 @@ function buildFeaturedBanner(article) {
     <img class="featured-image" src="${imageUrl}" alt="${article.title}" onerror="this.src='https://picsum.photos/seed/featured/1200/420'" />
     <div class="featured-overlay">
       <div class="featured-label">Top Story</div>
+      <p class="featured-source">${article.source.name}</p>
       <h2 class="featured-title">${article.title}</h2>
-      <a class="featured-link" href="${article.url}" target="_blank">Read Full Story →</a>
+      <p class="featured-description">${article.description || ""}</p>
+      <a class="featured-link" href="${article.url}" target="_blank" rel="noopener noreferrer">Read Full Story →</a>
     </div>
   `;
   featuredBanner.style.display = "block";
 }
 
-// --- STEP 6: TIMER LOGIC (NEW) ---
+// --- STEP 6: TIMER LOGIC (THE FIX) ---
 function startCountdown() {
-  if (timerId) clearInterval(timerId); // Clear any existing timer
-  timeLeft = 300; // Reset to 5:00
+  if (timerId) clearInterval(timerId); 
+  timeLeft = 300; 
   
   timerId = setInterval(() => {
     timeLeft--;
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
     
-    // Update the UI (B)
     if (countdownEl) {
         countdownEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     }
 
     if (timeLeft <= 0) {
-      fetchNews(currentCategory); // Auto-refresh when time hits 0
+      fetchNews(currentCategory); 
     }
   }, 1000);
 }
@@ -77,11 +95,15 @@ function startCountdown() {
 // --- STEP 7: Fetch news from server (FIXED WITH TIMESTAMP) ---
 async function fetchNews(category = "business") {
   currentCategory = category;
+  if (searchInput) searchInput.value = "";
+  if (clearBtn) clearBtn.style.display = "none";
+  if (featuredBanner) featuredBanner.style.display = "none";
+
   if (loadingState) loadingState.style.display = "block";
+  if (errorState) errorState.style.display = "none";
   if (articlesGrid) articlesGrid.innerHTML = "";
 
   try {
-    // (D) Cache-Buster for ASUS VivoBook/Render
     const response = await fetch(`/api/news?category=${category}&t=${Date.now()}`);
     const data = await response.json();
 
@@ -93,37 +115,76 @@ async function fetchNews(category = "business") {
       allArticles.slice(1).forEach(article => {
         articlesGrid.appendChild(createArticleCard(article));
       });
-      startCountdown(); // Restart the 5:00 clock after a successful fetch
+      startCountdown(); // Reset clock after news arrives
     } else {
       if (errorState) errorState.style.display = "block";
     }
   } catch (error) {
     if (loadingState) loadingState.style.display = "none";
     if (errorState) errorState.style.display = "block";
-    console.error("Fetch error:", error);
   }
 }
 
-// --- STEP 8: Create Article Card (Preserved Logic) ---
+// --- STEP 8: Article Card UI (STAYS THE SAME) ---
 function createArticleCard(article, isSavedView = false) {
-    // (B) Keep your original card design logic here
-    const card = document.createElement("div");
-    card.classList.add("article-card");
-    // ... (Your original card creation code)
-    return card;
+  const card = document.createElement("div");
+  card.classList.add("article-card");
+
+  const imageUrl = article.urlToImage || "https://picsum.photos/seed/default/400/200";
+  const alreadySaved = isArticleSaved(article.url);
+  const actionButton = isSavedView
+    ? `<button class="remove-btn" data-url="${article.url}">✕ Remove</button>`
+    : `<button class="bookmark-btn ${alreadySaved ? "saved" : ""}" data-url="${article.url}">${alreadySaved ? "✓ Saved" : "Save"}</button>`;
+
+  card.innerHTML = `
+    <img class="article-image" src="${imageUrl}" />
+    <div class="article-body">
+      <p class="article-source">${article.source.name}</p>
+      <h2 class="article-title">${article.title}</h2>
+      <div class="article-footer">
+        <div style="display:flex; gap:8px;">
+          ${actionButton}
+          <a class="article-link" href="${article.url}" target="_blank">Read More →</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const btnElement = card.querySelector(isSavedView ? ".remove-btn" : ".bookmark-btn");
+  if (btnElement) {
+    btnElement.addEventListener("click", () => {
+      if (isSavedView) {
+        removeArticle(article.url);
+        displayReadingList();
+      } else {
+        if (isArticleSaved(article.url)) {
+          removeArticle(article.url);
+          btnElement.textContent = "Save";
+          btnElement.classList.remove("saved");
+        } else {
+          saveArticle(article);
+          btnElement.textContent = "✓ Saved";
+          btnElement.classList.add("saved");
+        }
+      }
+    });
+  }
+  return card;
 }
 
-// --- STEP 9: Navigation & Refresh Events ---
+// --- STEP 9: Navigation & Refresh Logic ---
 navButtons.forEach(button => {
   button.addEventListener("click", (e) => {
     if (button.getAttribute("href") === "/quiz") return;
     e.preventDefault();
+    navButtons.forEach(btn => btn.classList.remove("active"));
+    button.classList.add("active");
     const category = button.getAttribute("data-category");
-    if (category) fetchNews(category);
+    if (category === "saved") displayReadingList();
+    else if (category) fetchNews(category);
   });
 });
 
-// Target your "Refresh Now" button
 const refreshBtn = document.getElementById('refresh-now');
 if (refreshBtn) {
     refreshBtn.addEventListener('click', (e) => {
@@ -132,7 +193,17 @@ if (refreshBtn) {
     });
 }
 
-// --- STEP 10: Initialize ---
-if (articlesGrid) {
-  fetchNews("business");
+function displayReadingList() {
+  if (!articlesGrid) return;
+  articlesGrid.innerHTML = "";
+  if (featuredBanner) featuredBanner.style.display = "none";
+  const saved = getSavedArticles();
+  if (saved.length === 0) {
+    articlesGrid.innerHTML = `<div class="empty-list"><h3>No saved articles</h3></div>`;
+    return;
+  }
+  saved.forEach(article => articlesGrid.appendChild(createArticleCard(article, true)));
 }
+
+// --- STEP 10: Initialize ---
+if (articlesGrid) fetchNews("business");
