@@ -8,11 +8,11 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Link to your existing core styles (B.1) -->
+    <!-- (C.1) Link to core styles in public/css/styles.css -->
     <link rel="stylesheet" href="/public/css/styles.css">
 
     <style>
-        /* Specific Quiz Enhancements — Prioritizing clean design (A) */
+        /* (B) Specific Quiz Enhancements — Preserving core design identity */
         .quiz-container-inner { max-width: 800px; margin: 40px auto; padding: 0 20px; }
         
         .quiz-header { text-align: center; margin-bottom: 50px; }
@@ -46,7 +46,6 @@
 
         .opt-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
         
-        /* Feedback Styles */
         .opt-btn.correct { background: #dcfce7; border-color: #22c55e; color: #166534; font-weight: 600; }
         .opt-btn.incorrect { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
 
@@ -103,17 +102,23 @@
         const btn = document.getElementById('generate-btn');
         const wrapper = document.getElementById('quiz-wrapper');
         const scoreDisplay = document.getElementById('score-display');
+        let sessionScore = 0;
 
         btn.addEventListener('click', async () => {
-            wrapper.innerHTML = "<p style='text-align:center;'>Fetching intelligence data...</p>";
+            wrapper.innerHTML = "<p style='text-align:center;'>Accessing Market Intelligence...</p>";
             scoreDisplay.style.display = 'none';
+            sessionScore = 0;
             
             try {
-                const res = await fetch('/api/quiz', { method: 'POST' });
+                // (D) Cache-Buster: Adding a timestamp (?t=) ensures Render 
+                // and your browser never show repetitive "cached" questions.
+                const res = await fetch(`/api/quiz?t=${Date.now()}`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
                 const questions = await res.json();
                 
                 wrapper.innerHTML = "";
-                let score = 0;
 
                 questions.forEach((q, qIdx) => {
                     const card = document.createElement('div');
@@ -122,7 +127,7 @@
                         <div class="question-text">${qIdx + 1}. ${q.question}</div>
                         <div class="options-grid" id="grid-${qIdx}">
                             ${q.options.map(opt => `
-                                <button class="opt-btn" onclick="handleSelect(this, '${opt}', '${q.correctAnswer}', ${qIdx})">
+                                <button class="opt-btn" onclick="handleSelect(this, \`${opt.replace(/'/g, "\\'")}\`, \`${q.correctAnswer.replace(/'/g, "\\'")}\`, ${qIdx}, ${questions.length})">
                                     ${opt}
                                 </button>
                             `).join('')}
@@ -131,7 +136,7 @@
                     wrapper.appendChild(card);
                 });
 
-                window.handleSelect = (btn, selected, correct, qIdx) => {
+                window.handleSelect = (btn, selected, correct, qIdx, total) => {
                     const grid = document.getElementById(`grid-${qIdx}`);
                     const buttons = grid.querySelectorAll('.opt-btn');
                     
@@ -139,7 +144,7 @@
                     
                     if (selected === correct) {
                         btn.classList.add('correct');
-                        score++;
+                        sessionScore++;
                     } else {
                         btn.classList.add('incorrect');
                         buttons.forEach(b => {
@@ -148,11 +153,12 @@
                     }
                     
                     scoreDisplay.style.display = 'block';
-                    scoreDisplay.innerText = `Current Session Score: ${score} / ${questions.length}`;
+                    scoreDisplay.innerText = `Session Accuracy: ${sessionScore} / ${total}`;
                 };
 
             } catch (err) {
-                wrapper.innerHTML = "<p style='color:red;'>Failed to load quiz. Please try again.</p>";
+                // (A) Graceful error handling for Render stability
+                wrapper.innerHTML = "<p style='color:red; text-align:center;'>Connection Timeout. Please refresh the page.</p>";
             }
         });
     </script>
