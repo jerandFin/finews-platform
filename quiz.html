@@ -2,162 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Market Mastery — FinNews</title>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- (C) File Hierarchy: Core styles under public/css/ -->
+    <!-- (C) Linking styles correctly from public/css -->
     <link rel="stylesheet" href="/public/css/styles.css">
-
     <style>
-        /* (B) Quiz Design Prioritization */
-        .quiz-container-inner { max-width: 800px; margin: 40px auto; padding: 0 20px; }
-        
-        .quiz-header { text-align: center; margin-bottom: 50px; }
-        .quiz-header h1 { font-family: 'Playfair Display', serif; font-size: 2.5rem; margin-bottom: 10px; }
-        
-        .quiz-card { 
-            background: white; 
-            border: 1px solid #e2e8f0; 
-            border-radius: 12px; 
-            padding: 30px; 
-            margin-bottom: 25px; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-
-        .question-text { font-size: 1.25rem; font-weight: 600; margin-bottom: 20px; color: #1e293b; }
-
-        .options-grid { display: grid; gap: 12px; }
-
-        .opt-btn { 
-            background: #f8fafc; 
-            border: 1px solid #e2e8f0; 
-            padding: 15px; 
-            border-radius: 8px; 
-            text-align: left; 
-            font-family: 'Inter', sans-serif;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .opt-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
-        
-        .opt-btn.correct { background: #dcfce7; border-color: #22c55e; color: #166534; font-weight: 600; }
-        .opt-btn.incorrect { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
-
-        .score-banner {
-            background: #1e293b;
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 30px;
-            font-weight: 600;
-        }
-
-        .gen-btn {
-            background: #1e293b;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .gen-btn:hover { background: #334155; }
+        .quiz-card { background: #fff; border: 1px solid #ddd; padding: 20px; margin: 15px 0; border-radius: 8px; }
+        .opt-btn { display: block; width: 100%; padding: 10px; margin: 5px 0; cursor: pointer; text-align: left; }
     </style>
 </head>
 <body>
-
-    <header class="site-header">
-        <div class="header-inner">
-            <div class="header-brand">
-                <h1 class="logo" style="cursor: pointer;" onclick="window.location.href='/'">FinNews</h1>
-                <p class="tagline">Markets • Business • Economy</p>
-            </div>
-            <a href="/" class="nav-btn">← Back to News</a>
-        </div>
-    </header>
-
-    <main class="quiz-container-inner">
-        <div class="quiz-header">
-            <h1>Market Mastery Quiz</h1>
-            <p>Analyze economic scenarios and test your financial reasoning.</p>
-            <button id="generate-btn" class="gen-btn">Generate Fresh Quiz</button>
-        </div>
-
-        <div id="score-display" class="score-banner" style="display: none;"></div>
-        <div id="quiz-wrapper">
-            <!-- Dynamic Content -->
-        </div>
-    </main>
+    <div id="quiz-container">
+        <h1>Economic Reasoning Quiz</h1>
+        <button id="gen-btn">Generate Unlimited Questions</button>
+        <div id="quiz-wrapper"></div>
+    </div>
 
     <script>
-        const btn = document.getElementById('generate-btn');
+        const btn = document.getElementById('gen-btn');
         const wrapper = document.getElementById('quiz-wrapper');
-        const scoreDisplay = document.getElementById('score-display');
-        let sessionScore = 0;
 
         btn.addEventListener('click', async () => {
-            // (A) Immediate UI Reset for Stability
-            wrapper.innerHTML = "<p style='text-align:center;'>Accessing fresh market data...</p>";
-            scoreDisplay.style.display = 'none';
-            sessionScore = 0;
+            // (D) CORE FIX: Wipe UI immediately so you don't see old questions
+            wrapper.innerHTML = "<p>Analyzing fresh market patterns...</p>";
             
             try {
-                // (D) THE FIX: Timestamp ensures every request URL is unique
-                const res = await fetch(`/api/quiz?t=${Date.now()}`, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const questions = await res.json();
+                // Cache-buster T ensures Render treats this as a brand new request
+                const res = await fetch(`/api/quiz?t=${Date.now()}`, { method: 'POST' });
+                const data = await res.json();
                 
-                // Wipe the loading message
-                wrapper.innerHTML = "";
+                wrapper.innerHTML = ""; // Clear the loading text
 
-                questions.forEach((q, qIdx) => {
+                data.forEach((q, i) => {
                     const card = document.createElement('div');
                     card.className = 'quiz-card';
                     card.innerHTML = `
-                        <div class="question-text">${qIdx + 1}. ${q.question}</div>
-                        <div class="options-grid" id="grid-${qIdx}">
-                            ${q.options.map(opt => `
-                                <button class="opt-btn" onclick="handleSelect(this, \`${opt.replace(/'/g, "\\'")}\`, \`${q.correctAnswer.replace(/'/g, "\\'")}\`, ${qIdx}, ${questions.length})">
-                                    ${opt}
-                                </button>
-                            `).join('')}
-                        </div>
+                        <p><strong>${i+1}. ${q.question}</strong></p>
+                        ${q.options.map(opt => `<button class="opt-btn">${opt}</button>`).join('')}
                     `;
                     wrapper.appendChild(card);
                 });
-
-                // (D) Answer selection logic with repeat prevention
-                window.handleSelect = (btn, selected, correct, qIdx, total) => {
-                    const grid = document.getElementById(`grid-${qIdx}`);
-                    const buttons = grid.querySelectorAll('.opt-btn');
-                    buttons.forEach(b => b.disabled = true);
-                    
-                    if (selected === correct) {
-                        btn.classList.add('correct');
-                        sessionScore++;
-                    } else {
-                        btn.classList.add('incorrect');
-                        buttons.forEach(b => {
-                            if (b.innerText.trim() === correct) b.classList.add('correct');
-                        });
-                    }
-                    scoreDisplay.style.display = 'block';
-                    scoreDisplay.innerText = `Session Accuracy: ${sessionScore} / ${total}`;
-                };
-            } catch (err) {
-                // (A) Error Handling for Render
-                wrapper.innerHTML = "<p style='color:red; text-align:center;'>Render Connection Error. Please refresh and try again.</p>";
+            } catch (e) {
+                wrapper.innerHTML = "<p>Connection delayed. Please try again.</p>";
             }
         });
     </script>
