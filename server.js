@@ -5,7 +5,6 @@ const app = express();
 app.use(express.json());
 
 // --- (B) & (C) PROTOCOL: PRIORITY ASSET MAPPING ---
-// Absolute security for your styles and frontend news engine paths
 app.use('/public/css', express.static(path.join(__dirname, 'public/css')));
 app.use('/public/js', express.static(path.join(__dirname, 'public/js')));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -23,61 +22,51 @@ app.get("/api/news", async (req, res) => {
         if (data.status !== "ok") throw new Error("API Limit");
         res.json(data);
     } catch (error) {
-        // (A) Stability: Fallback so Render never drops connection
+        // (A) Stability Fallback
         res.status(200).json({ status: "ok", articles: [] });
     }
 });
 
-// --- (D) HIGH-ENTROPY DYNAMIC QUIZ POOL MATRIX ---
-const archetypes = [
-    {
-        category: "Monetary",
-        subjects: ["The Federal Reserve", "The European Central Bank", "The Bank of Japan", "The Bank of England", "A hawkish central bank faction"],
-        actions: ["aggressively hikes the federal funds rate by 75bps", "restricts commercial bank reserve access ratios", "initiates large-scale quantitative tightening assets sales", "unexpectedly raises discount window borrowing premiums"],
-        contexts: ["to combat unanchored core inflation expectations", "amid an overheating labor market expansion", "following a historic peak in localized asset evaluations"],
-        generateQA: (s, a, c) => ({
-            question: `When ${s} ${a} ${c}, what is the direct structural impact on capital markets?`,
-            correct: "Bond yields spike upwards while equity valuations compress due to higher discount rates.",
-            decoys: [
-                "Commercial banking lending parameters loosen up rapidly causing hyper-liquidity.",
-                "Short-term capital moves directly into high-yield real estate investment derivatives.",
-                "The domestic fiat currency falls sharply against foreign index baskets."
-            ]
-        })
-    },
-    {
-        category: "Trade & Commodities",
-        subjects: ["OPEC+ member nations", "A major global manufacturing trade bloc", "An alliance of agricultural export cartels", "The G7 infrastructure council"],
-        actions: ["impose strict retaliatory tariff mandates", "enact emergency output supply limits", "freeze global distribution pipeline permissions", "levy shipping channel transit surcharges"],
-        contexts: ["due to escalating structural geopolitical border deadlocks", "to counter severe logistical supply chain chokepoints", "following a complete depletion of sovereign reserve stock buffers"],
-        generateQA: (s, a, c) => ({
-            question: `If ${s} ${a} ${c}, how will global manufacturing balances adjust?`,
-            correct: "Input production costs rise globally, causing an inward shift of the aggregate supply curve.",
-            decoys: [
-                "Consumer demand scales up exponentially for luxury discretionary commodities.",
-                "Deflationary pressures immediately ripple through heavy industry sectors.",
-                "Multinational organizations abandon local automation to prioritize manual workforces."
-            ]
-        })
-    },
-    {
-        category: "Fiscal",
-        subjects: ["The sovereign legislative assembly", "The Ministry of Finance executive cabinet", "A newly appointed tax oversight committee"],
-        actions: ["implements a progressive windfall revenue tax levy", "drastically slashes corporate capital gains allowances", "phases out domestic manufacturing subsidy allocations"],
-        contexts: ["to aggressively narrow structural national budget deficits", "in response to unprecedented corporate profit expansions", "amid pressure to rebalance sovereign balance sheet liabilities"],
-        generateQA: (s, a, c) => ({
-            question: `If ${s} ${a} ${c}, what is the most likely macroeconomic consequence for corporations?`,
-            correct: "Net corporate capital expenditures contract, tempering long-term structural productivity growth.",
-            decoys: [
-                "Speculative venture funding flowing into early-stage startups amplifies instantly.",
-                "Consumer discretionary expenditures expand uniformly across all income brackets.",
-                "Publicly traded corporations systematically reduce balance-sheet cash allocations."
-            ]
-        })
-    }
-];
+// --- (D) HIGH-ENTROPY DIFFICULTY MATRICES ---
+const difficultyPools = {
+    easy: [
+        {
+            subjects: ["A local consumer market", "A retail business chain", "A tech start-up community"],
+            actions: ["increases prices across its products", "offers large discounts to shoppers", "raises employee minimum wages"],
+            contexts: ["during the holiday shopping season", "to clear out excess warehouse stock", "amid high local job competition"],
+            generateQA: (s, a, c) => ({
+                question: `If ${s} ${a} ${c}, what is the basic outcome?`,
+                correct: "Consumer spending habits adjust to match the immediate change in pricing or incentives.",
+                decoys: ["Global international shipping lanes halt operations entirely.", "The nation's central bank prints emergency fiat currency pools.", "Corporate income tax bands double overnight."]
+            })
+        }
+    ],
+    medium: [
+        {
+            subjects: ["The Federal Reserve", "The European Central Bank", "The Bank of Japan"],
+            actions: ["aggressively hikes the target interest rate by 75bps", "restricts bank reserve availability parameters", "initiates strategic quantitative tightening asset roll-offs"],
+            contexts: ["to combat unanchored core consumer inflation trends", "amid an over-expanding corporate credit market", "following unprecedented peaks in asset valuations"],
+            generateQA: (s, a, c) => ({
+                question: `When ${s} ${a} ${c}, what is the direct structural impact on capital markets?`,
+                correct: "Bond yields spike upwards while equity valuations compress due to higher discount rates.",
+                decoys: ["Commercial bank lending limits loosen instantly causing hyper-liquidity.", "Capital leaves sovereign bonds to buy high-risk real estate derivatives.", "The local currency falls dramatically against all foreign market baskets."]
+            })
+        }
+    ],
+    hard: [
+        {
+            subjects: ["An international clearinghouse", "A sovereign wealth fund's derivatives desk", "The Bank for International Settlements (BIS)"],
+            actions: ["enforces severe cross-currency collateral haircuts", "unwinds multi-billion dollar interest rate swap positions", "implements stringent macroprudential liquidity rules"],
+            contexts: ["to hedge against systemic counterparty contagion failures", "following an inversion of the long-duration yield curves", "amid a sudden liquidity squeeze in the overnight offshore repo markets"],
+            generateQA: (s, a, c) => ({
+                question: `Analyze the systemic transmission mechanism if ${s} ${a} ${c}:`,
+                correct: "Offshore funding premiums escalate, driving credit contraction across transnational interbank balance sheets.",
+                decoys: ["Retail consumer purchasing power moves directly into traditional manufacturing stocks.", "Domestic microeconomic sales volume equalizes smoothly across secondary markets.", "Sovereign treasury auction yields drop to zero linearly via automated market-making algorithms."]
+            })
+        }
+    ]
+};
 
-// Persistent state tracking set to completely eliminate repetition
 let structuralHistory = new Set();
 
 app.post("/api/quiz", (req, res) => {
@@ -85,32 +74,28 @@ app.post("/api/quiz", (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     
     try {
+        // (A) Check parameter inputs carefully; default to medium if empty
+        const level = req.query.difficulty || 'medium';
+        const archetypes = difficultyPools[level] || difficultyPools['medium'];
+        
         let batch = [];
         let attempts = 0;
 
-        // Generate exactly 3 uniquely non-repetitive items
         while (batch.length < 3 && attempts < 200) {
             attempts++;
             
-            // 1. Pick a structural model category
             const arch = archetypes[Math.floor(Math.random() * archetypes.length)];
-            
-            // 2. Pick variables within that category
             const s = arch.subjects[Math.floor(Math.random() * arch.subjects.length)];
             const a = arch.actions[Math.floor(Math.random() * arch.actions.length)];
             const c = arch.contexts[Math.floor(Math.random() * arch.contexts.length)];
             
-            // Create a unique fingerprint key
-            const structuralKey = `${arch.category}-${s.substring(0,4)}-${a.substring(0,4)}-${c.substring(0,4)}`;
+            const structuralKey = `${level}-${s.substring(0,4)}-${a.substring(0,4)}-${c.substring(0,4)}`;
 
-            // 3. Unique Verification (D)
+            // (D) Uniqueness Verification Protocol
             if (!structuralHistory.has(structuralKey)) {
                 structuralHistory.add(structuralKey);
                 
-                // Build unique Question, Correct Answer, and Options matching this archetype
                 const payload = arch.generateQA(s, a, c);
-                
-                // Shuffle options so the correct answer is randomized structurally
                 const combinedOptions = [payload.correct, ...payload.decoys].sort(() => Math.random() - 0.5);
 
                 batch.push({
@@ -122,14 +107,13 @@ app.post("/api/quiz", (req, res) => {
             }
         }
 
-        // Safety: If history expands too much, prune it but retain protection buffer
         if (structuralHistory.size > 2000) {
             structuralHistory = new Set(Array.from(structuralHistory).slice(1000));
         }
 
         res.json(batch);
     } catch (e) {
-        // (A) Safeguard Render console execution loops
+        // (A) Safeguard server loop from crashes
         res.status(200).json([]);
     }
 });
@@ -138,11 +122,10 @@ app.post("/api/quiz", (req, res) => {
 app.get('/quiz', (req, res) => res.sendFile(path.join(__dirname, 'quiz.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// Global API Fallback Protection Router
 app.use((req, res) => {
     if (req.path.startsWith('/api/')) return res.status(404).json({ error: "Endpoint Inactive" });
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Matrix System Engine Active on Port ${PORT}`));
+app.listen(PORT, () => console.log(`Difficulty Matrix Active on Port ${PORT}`));
