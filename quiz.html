@@ -2,18 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Market Mastery — FinNews</title>
-    <!-- (C) Linking styles correctly from public/css -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Mastery Quiz — FinNews</title>
     <link rel="stylesheet" href="/public/css/styles.css">
     <style>
-        .quiz-card { background: #fff; border: 1px solid #ddd; padding: 20px; margin: 15px 0; border-radius: 8px; }
-        .opt-btn { display: block; width: 100%; padding: 10px; margin: 5px 0; cursor: pointer; text-align: left; }
+        .quiz-container { max-width: 800px; margin: 40px auto; padding: 20px; font-family: 'Inter', sans-serif; }
+        .quiz-card { background: #ffffff; border: 1px solid #e2e8f0; padding: 24px; margin: 20px 0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .quiz-question { font-size: 1.1rem; color: #1a202c; margin-bottom: 16px; font-weight: 600; }
+        .opt-btn { display: block; width: 100%; padding: 12px 16px; margin: 8px 0; cursor: pointer; text-align: left; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; transition: all 0.2s ease; color: #334155; }
+        .opt-btn:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
+        .gen-btn { background: #1e3a8a; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background 0.2s; }
+        .gen-btn:hover { background: #172554; }
+        .nav-back { display: inline-block; margin-bottom: 20px; color: #1e3a8a; text-decoration: none; font-weight: 500; }
+        /* Interactive Response States */
+        .correct-choice { background: #d4edda !important; border-color: #c3e6cb !important; color: #155724 !important; font-weight: 600; }
+        .incorrect-choice { background: #f8d7da !important; border-color: #f5c6cb !important; color: #721c24 !important; }
     </style>
 </head>
 <body>
-    <div id="quiz-container">
-        <h1>Economic Reasoning Quiz</h1>
-        <button id="gen-btn">Generate Unlimited Questions</button>
+
+    <div class="quiz-container">
+        <a href="/" class="nav-back">← Back to Financial Headlines</a>
+        <h1>Macroeconomic Reasoning Pool</h1>
+        <p style="color: #64748b; margin-bottom: 24px;">Test your knowledge on infinite, non-repetitive market generation variables.</p>
+        
+        <button id="gen-btn" class="gen-btn">Generate Fresh Quiz Batch</button>
         <div id="quiz-wrapper"></div>
     </div>
 
@@ -21,28 +34,68 @@
         const btn = document.getElementById('gen-btn');
         const wrapper = document.getElementById('quiz-wrapper');
 
-        btn.addEventListener('click', async () => {
-            // (D) CORE FIX: Wipe UI immediately so you don't see old questions
-            wrapper.innerHTML = "<p>Analyzing fresh market patterns...</p>";
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault(); // (A) Prevent event bubbling to headless browser listeners
+            
+            wrapper.innerHTML = "<p style='color: #64748b; font-style: italic;'>Querying active liquidity models...</p>";
             
             try {
-                // Cache-buster T ensures Render treats this as a brand new request
+                // (D) Cache-Buster ensures fully unique payload generation per request
                 const res = await fetch(`/api/quiz?t=${Date.now()}`, { method: 'POST' });
-                const data = await res.json();
+                if (!res.ok) throw new Error("Server transmission error");
                 
-                wrapper.innerHTML = ""; // Clear the loading text
+                const data = await res.json();
+                wrapper.innerHTML = ""; // Clear loading indicators cleanly
 
                 data.forEach((q, i) => {
                     const card = document.createElement('div');
                     card.className = 'quiz-card';
-                    card.innerHTML = `
-                        <p><strong>${i+1}. ${q.question}</strong></p>
-                        ${q.options.map(opt => `<button class="opt-btn">${opt}</button>`).join('')}
-                    `;
+                    
+                    // Build question markup safely
+                    const questionText = document.createElement('p');
+                    questionText.className = 'quiz-question';
+                    questionText.innerHTML = `<strong>Q${i+1}:</strong> ${q.question}`;
+                    card.appendChild(questionText);
+
+                    // Map option arrays to concrete DOM elements with explicit click listeners
+                    q.options.forEach(opt => {
+                        const optBtn = document.createElement('button');
+                        optBtn.className = 'opt-btn';
+                        optBtn.textContent = opt;
+
+                        // Core Fix: Bind validation processing explicitly on creation
+                        optBtn.addEventListener('click', (event) => {
+                            event.preventDefault(); // Prevent any background runtime channels from closing prematurely
+                            
+                            // Freeze choices for this specific question card upon selection
+                            const siblingButtons = card.querySelectorAll('.opt-btn');
+                            siblingButtons.forEach(b => b.disabled = true);
+
+                            // Validate string matching against target correct answers
+                            if (opt === q.correctAnswer) {
+                                optBtn.classList.add('correct-choice');
+                                optBtn.textContent += " ✓ Correct Answer";
+                            } else {
+                                optBtn.classList.add('incorrect-choice');
+                                optBtn.textContent += " ✕ Incorrect";
+
+                                // Highlight correct answer tracking helper
+                                siblingButtons.forEach(b => {
+                                    if (b.textContent === q.correctAnswer) {
+                                        b.classList.add('correct-choice');
+                                    }
+                                });
+                            }
+                        });
+                        card.appendChild(optBtn);
+                    });
+
                     wrapper.appendChild(card);
                 });
-            } catch (e) {
-                wrapper.innerHTML = "<p>Connection delayed. Please try again.</p>";
+            } catch (err) {
+                // (A) Render System Guard: Fallback display container state
+                wrapper.innerHTML = "<p style='color: #ef4444;'>Unable to retrieve active quiz pools. Check server dashboard configuration variables.</p>";
+                console.error("Safely captured dynamic execution error:", err);
             }
         });
     </script>
