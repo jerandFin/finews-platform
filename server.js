@@ -14,7 +14,7 @@ async function fetchLiveNewsHeadlines(category = 'business') {
     const apiKey = process.env.NEWS_API_KEY;
     if (!apiKey) return [];
     try {
-        const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${apiKey}`);
+        const response = await fetch(`[https://newsapi.org/v2/top-headlines?country=us&category=$](https://newsapi.org/v2/top-headlines?country=us&category=$){category}&apiKey=${apiKey}`);
         const data = await response.json();
         if (data.status === "ok" && data.articles) {
             return data.articles
@@ -33,7 +33,7 @@ app.get("/api/news", async (req, res) => {
     try {
         const apiKey = process.env.NEWS_API_KEY;
         const category = req.query.category || 'business';
-        const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${apiKey}`);
+        const response = await fetch(`[https://newsapi.org/v2/top-headlines?country=us&category=$](https://newsapi.org/v2/top-headlines?country=us&category=$){category}&apiKey=${apiKey}`);
         const data = await response.json();
         if (data.status !== "ok") throw new Error("API Limit");
         res.json(data);
@@ -43,7 +43,24 @@ app.get("/api/news", async (req, res) => {
     }
 });
 
-// --- AI GENERATOR: GEMINI API ENGINE ---
+// Helper: Safely parse JSON string returned by LLMs (strips markdown code blocks)
+function safeParseLLMJson(rawText) {
+    if (!rawText) return null;
+    try {
+        const cleaned = rawText.replace(/```json\n?|\n?```/gi, '').trim();
+        const parsed = JSON.parse(cleaned);
+        
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed.questions && Array.isArray(parsed.questions)) return parsed.questions;
+        if (parsed.quiz && Array.isArray(parsed.quiz)) return parsed.quiz;
+        return null;
+    } catch (e) {
+        console.warn("JSON Parse Error on AI output:", e.message);
+        return null;
+    }
+}
+
+// --- AI GENERATOR 1: GEMINI API ENGINE ---
 async function generateQuizWithGemini(headlines, difficulty) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return null;
@@ -54,7 +71,7 @@ ${headlines.join('\n')}
 Generate exactly 3 multiple-choice quiz questions testing financial and economic reasoning based on these headlines.
 Target difficulty level: ${difficulty}.
 
-Return ONLY valid JSON matching this exact array structure, with no extra text or markdown formatting:
+Return ONLY valid JSON matching this exact array structure, with no extra text:
 [
   {
     "question": "Question text based on a headline?",
@@ -64,7 +81,7 @@ Return ONLY valid JSON matching this exact array structure, with no extra text o
 ]`;
 
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
+        const url = `[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent)`;
         
         const response = await fetch(url, {
             method: 'POST',
@@ -87,19 +104,64 @@ Return ONLY valid JSON matching this exact array structure, with no extra text o
 
         const data = await response.json();
         const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!rawText) return null;
-
-        const parsed = JSON.parse(rawText);
-        return Array.isArray(parsed) ? parsed : null;
+        return safeParseLLMJson(rawText);
     } catch (err) {
-        console.warn("Gemini generation failed, reverting to fallback matrix:", err.message);
+        console.warn("Gemini generation failed:", err.message);
+        return null;
+    }
+}
+
+// --- AI GENERATOR 2: OPENROUTER ENGINE (No Region Restriction) ---
+async function generateQuizWithOpenRouter(headlines, difficulty) {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) return null;
+
+    const prompt = `You are a financial news editor. Based on today's headlines:
+${headlines.join('\n')}
+
+Generate exactly 3 multiple-choice financial quiz questions (Difficulty: ${difficulty}).
+Return ONLY a valid JSON array like this:
+[
+  {
+    "question": "Question text?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": "Option A"
+  }
+]`;
+
+    try {
+        const response = await fetch("[https://openrouter.ai/api/v1/chat/completions](https://openrouter.ai/api/v1/chat/completions)", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "[https://finnews-quiz.onrender.com](https://finnews-quiz.onrender.com)",
+                "X-Title": "FinNews Quiz App"
+            },
+            body: JSON.stringify({
+                // Uses auto-router for free models (Llama 3.3, DeepSeek, Gemma, etc.)
+                model: "openrouter/free", 
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            console.warn(`OpenRouter returned status: ${response.status}`);
+            return null;
+        }
+
+        const data = await response.json();
+        const rawText = data?.choices?.[0]?.message?.content;
+        return safeParseLLMJson(rawText);
+    } catch (e) {
+        console.warn("OpenRouter generation failed:", e.message);
         return null;
     }
 }
 
 // --- FALLBACK MATRIX (Guarantees zero Render errors if AI or News API is down) ---
-const fallbackMatrix = [
+const fallbackMatrixPool = [
     {
         question: "How do unexpected interest rate changes by central banks typically impact corporate borrowing?",
         options: [
@@ -129,8 +191,34 @@ const fallbackMatrix = [
             "Instant stabilization of foreign exchange rates."
         ],
         correctAnswer: "An increased market expectation of an impending economic slowdown."
+    },
+    {
+        question: "When a nation's central bank engages in Quantitative Easing (QE), what is the direct objective?",
+        options: [
+            "Inject liquidity into commercial banks to lower long-term interest rates.",
+            "Directly increase tax rates on large financial institutions.",
+            "Decrease the overall national debt held by private investors.",
+            "Freeze international currency conversion rates indefinitely."
+        ],
+        correctAnswer: "Inject liquidity into commercial banks to lower long-term interest rates."
+    },
+    {
+        question: "How does persistent high inflation usually affect fixed-income bondholders?",
+        options: [
+            "It erodes the real purchasing power of future fixed coupon payments.",
+            "It increases the guaranteed principal repayment amount upon maturity.",
+            "It eliminates default risk for all corporate debt issues.",
+            "It forces corporate issuers to double annual dividend payouts."
+        ],
+        correctAnswer: "It erodes the real purchasing power of future fixed coupon payments."
     }
 ];
+
+// Helper to pick n random fallback questions
+function getRandomFallbackQuestions(pool, count = 3) {
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+}
 
 // --- (D) LIVE AI QUIZ ROUTE ---
 app.post("/api/quiz", async (req, res) => {
@@ -142,19 +230,28 @@ app.post("/api/quiz", async (req, res) => {
         
         let quizQuestions = null;
 
-        // 1. Generate quiz with Gemini if headlines exist
-        if (headlines.length > 0 && process.env.GEMINI_API_KEY) {
-            quizQuestions = await generateQuizWithGemini(headlines, difficulty);
+        if (headlines.length > 0) {
+            // 1. Primary Engine: Gemini API
+            if (process.env.GEMINI_API_KEY) {
+                quizQuestions = await generateQuizWithGemini(headlines, difficulty);
+            }
+
+            // 2. Secondary Engine: OpenRouter (Fallback AI if Gemini fails or hits limit)
+            if ((!quizQuestions || !Array.isArray(quizQuestions) || quizQuestions.length === 0) && process.env.OPENROUTER_API_KEY) {
+                console.log("Routing quiz request to OpenRouter fallback AI...");
+                quizQuestions = await generateQuizWithOpenRouter(headlines, difficulty);
+            }
         }
 
-        // 2. Fallback if Gemini key is absent, rate-limited, or headlines failed (A)
+        // 3. System Guard: Randomized Offline Fallback Pool
         if (!quizQuestions || !Array.isArray(quizQuestions) || quizQuestions.length === 0) {
-            quizQuestions = fallbackMatrix;
+            console.log("All AI models unavailable. Delivering randomized offline question matrix.");
+            quizQuestions = getRandomFallbackQuestions(fallbackMatrixPool, 3);
         }
 
-        // Format payload and shuffle options
+        // Format payload and shuffle option orders
         const batch = quizQuestions.map((q, idx) => ({
-            id: `news-gemini-${Date.now()}-${idx}`,
+            id: `news-ai-${Date.now()}-${idx}`,
             question: q.question,
             options: [...q.options].sort(() => Math.random() - 0.5),
             correctAnswer: q.correctAnswer
@@ -162,9 +259,9 @@ app.post("/api/quiz", async (req, res) => {
 
         res.json(batch);
     } catch (e) {
-        console.error("Quiz API Error:", e);
-        // (A) System Guard: Return fallback array instead of crashing
-        res.json(fallbackMatrix);
+        console.error("Quiz API Route Error:", e);
+        // (A) System Guard: Return randomized pool on unexpected error
+        res.json(getRandomFallbackQuestions(fallbackMatrixPool, 3));
     }
 });
 
@@ -178,4 +275,4 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`FinNews Gemini Engine active on port ${PORT}`));
+app.listen(PORT, () => console.log(`FinNews Multi-Engine Server active on port ${PORT}`));
