@@ -4,43 +4,90 @@ const app = express();
 
 app.use(express.json());
 
-// --- (B) & (C) FILE PATH MAPPINGS ---
+// --- FILE PATH MAPPINGS ---
 app.use('/public/css', express.static(path.join(__dirname, 'public/css')));
 app.use('/public/js', express.static(path.join(__dirname, 'public/js')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- NEWS API ENGINE ---
+// --- FALLBACK NEWS DATASET (Ensures feed never breaks on Render) ---
+const fallbackArticles = [
+    {
+        title: "Federal Reserve Holds Rates Steady Amid Mixed Inflation Indicators",
+        description: "Central bank policymakers signal a cautious approach to future monetary adjustments as economic data shows resilient labor growth.",
+        url: "#",
+        urlToImage: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80",
+        publishedAt: new Date().toISOString(),
+        source: { name: "Wall Street Journal" }
+    },
+    {
+        title: "Global Commodity Markets Adjust as Energy Supply Chains Stabilize",
+        description: "Oil and natural gas futures settled lower this morning following updated shipping route forecasts and increased inventory reports.",
+        url: "#",
+        urlToImage: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=600&q=80",
+        publishedAt: new Date().toISOString(),
+        source: { name: "Bloomberg" }
+    },
+    {
+        title: "Tech Equities Lead Market Rally Following Quarterly Earnings Surprises",
+        description: "Major semiconductor and cloud computing software providers reported profit margins above consensus analyst projections.",
+        url: "#",
+        urlToImage: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80",
+        publishedAt: new Date().toISOString(),
+        source: { name: "Reuters" }
+    },
+    {
+        title: "Treasury Yields Flatten as Bond Traders Reevaluate Growth Expectations",
+        description: "Short-term sovereign debt yields shifted today in response to updated fiscal spending disclosures and international trade metrics.",
+        url: "#",
+        urlToImage: "https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=600&q=80",
+        publishedAt: new Date().toISOString(),
+        source: { name: "Financial Times" }
+    }
+];
+
+// --- NEWS API FETCH HELPER FOR AI ---
 async function fetchLiveNewsHeadlines(category = 'business') {
     const apiKey = process.env.NEWS_API_KEY;
-    if (!apiKey) return [];
-    try {
-        const response = await fetch(`[https://newsapi.org/v2/top-headlines?country=us&category=$](https://newsapi.org/v2/top-headlines?country=us&category=$){category}&apiKey=${apiKey}`);
-        const data = await response.json();
-        if (data.status === "ok" && data.articles) {
-            return data.articles
-                .filter(a => a.title && a.title !== "[Removed]")
-                .slice(0, 5)
-                .map(a => `- ${a.title}: ${a.description || ''}`);
+    if (apiKey) {
+        try {
+            const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${apiKey}`);
+            const data = await response.json();
+            if (data.status === "ok" && data.articles && data.articles.length > 0) {
+                return data.articles
+                    .filter(a => a.title && a.title !== "[Removed]")
+                    .slice(0, 5)
+                    .map(a => `- ${a.title}: ${a.description || ''}`);
+            }
+        } catch (err) {
+            console.warn("Live News API fetch failed; utilizing server fallback headlines.");
         }
-    } catch (err) {
-        console.warn("News API fetch failed, proceeding with fallback.");
     }
-    return [];
+    // Fallback headline strings for AI prompt
+    return fallbackArticles.map(a => `- ${a.title}: ${a.description}`);
 }
 
+// --- NEWS FEED API ENDPOINT (For Frontend Web Display) ---
 app.get("/api/news", async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    try {
-        const apiKey = process.env.NEWS_API_KEY;
-        const category = req.query.category || 'business';
-        const response = await fetch(`[https://newsapi.org/v2/top-headlines?country=us&category=$](https://newsapi.org/v2/top-headlines?country=us&category=$){category}&apiKey=${apiKey}`);
-        const data = await response.json();
-        if (data.status !== "ok") throw new Error("API Limit");
-        res.json(data);
-    } catch (error) {
-        // (A) Render System Guard
-        res.status(200).json({ status: "ok", articles: [] });
+    const apiKey = process.env.NEWS_API_KEY;
+    const category = req.query.category || 'business';
+
+    if (apiKey) {
+        try {
+            const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${apiKey}`);
+            const data = await response.json();
+            
+            // If NewsAPI responds successfully with articles
+            if (data.status === "ok" && data.articles && data.articles.length > 0) {
+                return res.json(data);
+            }
+        } catch (error) {
+            console.warn("News API remote fetch blocked or failed.");
+        }
     }
+
+    // System Guard: Deliver Fallback News Feed so UI never stays empty
+    res.status(200).json({ status: "ok", articles: fallbackArticles });
 });
 
 // Helper: Safely parse JSON string returned by LLMs (strips markdown code blocks)
@@ -81,7 +128,7 @@ Return ONLY valid JSON matching this exact array structure, with no extra text:
 ]`;
 
     try {
-        const url = `[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent)`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
         
         const response = await fetch(url, {
             method: 'POST',
@@ -97,10 +144,7 @@ Return ONLY valid JSON matching this exact array structure, with no extra text:
             })
         });
 
-        if (!response.ok) {
-            console.warn(`Gemini API returned status: ${response.status}`);
-            return null;
-        }
+        if (!response.ok) return null;
 
         const data = await response.json();
         const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -130,26 +174,22 @@ Return ONLY a valid JSON array like this:
 ]`;
 
     try {
-        const response = await fetch("[https://openrouter.ai/api/v1/chat/completions](https://openrouter.ai/api/v1/chat/completions)", {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
-                "HTTP-Referer": "[https://finnews-quiz.onrender.com](https://finnews-quiz.onrender.com)",
+                "HTTP-Referer": "https://finnews-quiz.onrender.com",
                 "X-Title": "FinNews Quiz App"
             },
             body: JSON.stringify({
-                // Uses auto-router for free models (Llama 3.3, DeepSeek, Gemma, etc.)
                 model: "openrouter/free", 
                 messages: [{ role: "user", content: prompt }],
                 temperature: 0.7
             })
         });
 
-        if (!response.ok) {
-            console.warn(`OpenRouter returned status: ${response.status}`);
-            return null;
-        }
+        if (!response.ok) return null;
 
         const data = await response.json();
         const rawText = data?.choices?.[0]?.message?.content;
@@ -160,7 +200,7 @@ Return ONLY a valid JSON array like this:
     }
 }
 
-// --- FALLBACK MATRIX (Guarantees zero Render errors if AI or News API is down) ---
+// --- FALLBACK QUIZ MATRIX ---
 const fallbackMatrixPool = [
     {
         question: "How do unexpected interest rate changes by central banks typically impact corporate borrowing?",
@@ -201,26 +241,15 @@ const fallbackMatrixPool = [
             "Freeze international currency conversion rates indefinitely."
         ],
         correctAnswer: "Inject liquidity into commercial banks to lower long-term interest rates."
-    },
-    {
-        question: "How does persistent high inflation usually affect fixed-income bondholders?",
-        options: [
-            "It erodes the real purchasing power of future fixed coupon payments.",
-            "It increases the guaranteed principal repayment amount upon maturity.",
-            "It eliminates default risk for all corporate debt issues.",
-            "It forces corporate issuers to double annual dividend payouts."
-        ],
-        correctAnswer: "It erodes the real purchasing power of future fixed coupon payments."
     }
 ];
 
-// Helper to pick n random fallback questions
 function getRandomFallbackQuestions(pool, count = 3) {
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, count);
 }
 
-// --- (D) LIVE AI QUIZ ROUTE ---
+// --- LIVE AI QUIZ ROUTE ---
 app.post("/api/quiz", async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     
@@ -236,7 +265,7 @@ app.post("/api/quiz", async (req, res) => {
                 quizQuestions = await generateQuizWithGemini(headlines, difficulty);
             }
 
-            // 2. Secondary Engine: OpenRouter (Fallback AI if Gemini fails or hits limit)
+            // 2. Secondary Engine: OpenRouter AI Fallback
             if ((!quizQuestions || !Array.isArray(quizQuestions) || quizQuestions.length === 0) && process.env.OPENROUTER_API_KEY) {
                 console.log("Routing quiz request to OpenRouter fallback AI...");
                 quizQuestions = await generateQuizWithOpenRouter(headlines, difficulty);
@@ -249,7 +278,6 @@ app.post("/api/quiz", async (req, res) => {
             quizQuestions = getRandomFallbackQuestions(fallbackMatrixPool, 3);
         }
 
-        // Format payload and shuffle option orders
         const batch = quizQuestions.map((q, idx) => ({
             id: `news-ai-${Date.now()}-${idx}`,
             question: q.question,
@@ -260,7 +288,6 @@ app.post("/api/quiz", async (req, res) => {
         res.json(batch);
     } catch (e) {
         console.error("Quiz API Route Error:", e);
-        // (A) System Guard: Return randomized pool on unexpected error
         res.json(getRandomFallbackQuestions(fallbackMatrixPool, 3));
     }
 });
