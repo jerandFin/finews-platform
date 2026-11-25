@@ -66,13 +66,12 @@
     </div>
   </nav>
 
-  <!-- (D) THE TIMER FIX: Standardized IDs for the app.js Countdown -->
   <div id="refresh-status" class="refresh-status">
-    <span id="last-updated-text">Last updated: just now</span>
+    <span id="last-updated-text">Not checked yet</span>
     <span class="refresh-divider">·</span>
     <span>Refreshing in <span id="countdown-timer">5:00</span></span>
-    <!-- Matches getElementById('refresh-now') in your app.js -->
-    <button id="refresh-now" title="Refresh now">
+    <span id="refresh-message" role="status"></span>
+    <button id="refresh-now" type="button" title="Refresh now">
       <span id="refresh-icon">↻</span> Refresh Now
     </button>
   </div>

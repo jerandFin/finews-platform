@@ -9,7 +9,10 @@ const errorState = document.getElementById("error");
 const currentDateEl = document.getElementById("current-date");
 const navButtons = document.querySelectorAll(".nav-btn");
 const featuredBanner = document.getElementById("featured-banner");
-const countdownEl = document.getElementById("countdown-timer"); // The countdown span
+const countdownEl = document.getElementById("countdown-timer");
+const lastCheckEl = document.getElementById("last-updated-text");
+const refreshMessage = document.getElementById("refresh-message");
+const refreshBtn = document.getElementById("refresh-now");
 
 const searchInput = document.getElementById("search-input");
 const searchBtn = document.getElementById("search-btn");
@@ -25,8 +28,9 @@ if (currentDateEl) currentDateEl.textContent = formattedDate;
 // --- STEP 3: Track current state ---
 let currentCategory = "business";
 let allArticles = [];
-let timeLeft = 300; // 5 minutes
 let timerId = null;
+let newsRequest = null;
+let showingSampleFeed = false;
 
 // --- STEP 4: Reading List Storage (STAYS THE SAME) ---
 function getSavedArticles() {
@@ -72,56 +76,100 @@ function buildFeaturedBanner(article) {
   featuredBanner.style.display = "block";
 }
 
-// --- STEP 6: TIMER LOGIC (THE FIX) ---
+// --- STEP 6: Automatic refresh countdown ---
 function startCountdown() {
-  if (timerId) clearInterval(timerId); 
-  timeLeft = 300; 
-  
+  let timeLeft = 300;
+  countdownEl.textContent = "5:00";
   timerId = setInterval(() => {
-    timeLeft--;
+    timeLeft -= 1;
     const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    
-    if (countdownEl) {
-        countdownEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-    }
-
-    if (timeLeft <= 0) {
-      fetchNews(currentCategory); 
-    }
+    const seconds = String(timeLeft % 60).padStart(2, "0");
+    countdownEl.textContent = `${minutes}:${seconds}`;
+    if (timeLeft === 0) fetchNews(currentCategory);
   }, 1000);
 }
 
-// --- STEP 7: Fetch news from server (FIXED WITH TIMESTAMP) ---
-async function fetchNews(category = "business") {
-  currentCategory = category;
-  if (searchInput) searchInput.value = "";
-  if (clearBtn) clearBtn.style.display = "none";
-  if (featuredBanner) featuredBanner.style.display = "none";
+// --- STEP 7: Check for new headlines ---
+async function fetchNews(category) {
+  if (newsRequest && category === currentCategory) return;
+  newsRequest?.abort();
+  clearInterval(timerId);
 
-  if (loadingState) loadingState.style.display = "block";
-  if (errorState) errorState.style.display = "none";
-  if (articlesGrid) articlesGrid.innerHTML = "";
+  if (category !== currentCategory) {
+    allArticles = [];
+    showingSampleFeed = false;
+    lastCheckEl.textContent = "Not checked yet";
+  }
+  currentCategory = category;
+
+  if (allArticles.length === 0) {
+    if (searchInput) searchInput.value = "";
+    if (clearBtn) clearBtn.style.display = "none";
+    featuredBanner.style.display = "none";
+    articlesGrid.replaceChildren();
+    loadingState.style.display = "block";
+  }
+  errorState.style.display = "none";
+  refreshBtn.disabled = true;
+  countdownEl.textContent = "—";
+  refreshMessage.textContent = "Checking for headlines…";
+
+  const request = new AbortController();
+  newsRequest = request;
+  const timeout = setTimeout(() => request.abort(), 15000);
 
   try {
-    const response = await fetch(`/api/news?category=${category}&t=${Date.now()}`);
+    const query = new URLSearchParams({ category, t: Date.now() });
+    const response = await fetch(`/api/news?${query}`, { signal: request.signal });
+    if (!response.ok) throw new Error("News request failed");
     const data = await response.json();
-
-    if (loadingState) loadingState.style.display = "none";
-
-    if (data.articles && data.articles.length > 0) {
-      allArticles = data.articles;
-      buildFeaturedBanner(allArticles[0]);
-      allArticles.slice(1).forEach(article => {
-        articlesGrid.appendChild(createArticleCard(article));
-      });
-      startCountdown(); // Reset clock after news arrives
-    } else {
-      if (errorState) errorState.style.display = "block";
+    if (newsRequest !== request) return;
+    if (!Array.isArray(data.articles) || data.articles.length === 0) {
+      throw new Error("No headlines returned");
     }
-  } catch (error) {
-    if (loadingState) loadingState.style.display = "none";
-    if (errorState) errorState.style.display = "block";
+    if (data.feedStatus === "fallback" && allArticles.length > 0 && !showingSampleFeed) {
+      throw new Error("Live headlines are unavailable");
+    }
+
+    const previousUrls = new Set(allArticles.map(article => article.url));
+    const newUrls = new Set(data.articles.map(article => article.url).filter(url => !previousUrls.has(url)));
+    const hadLiveFeed = allArticles.length > 0 && !showingSampleFeed;
+
+    buildFeaturedBanner(data.articles[0]);
+    articlesGrid.replaceChildren(...data.articles.slice(1).map(article => createArticleCard(article)));
+    allArticles = data.articles;
+    showingSampleFeed = data.feedStatus === "fallback";
+
+    if (showingSampleFeed) {
+      refreshMessage.textContent = "Live headlines unavailable. Showing sample headlines.";
+      return;
+    }
+
+    const checkedAt = new Date().toLocaleTimeString([], {
+      hour: "numeric", minute: "2-digit", second: "2-digit"
+    });
+    lastCheckEl.textContent = `Last checked: ${checkedAt}`;
+    if (!hadLiveFeed) {
+      refreshMessage.textContent = "Headlines loaded.";
+    } else if (newUrls.size === 0) {
+      refreshMessage.textContent = "No new headlines.";
+    } else {
+      refreshMessage.textContent = `${newUrls.size} new ${newUrls.size === 1 ? "headline" : "headlines"}.`;
+    }
+  } catch {
+    if (newsRequest !== request) return;
+    if (allArticles.length === 0) errorState.style.display = "block";
+    refreshMessage.textContent = allArticles.length > 0
+      ? "Refresh failed. Showing previous headlines."
+      : "Could not load headlines.";
+  } finally {
+    clearTimeout(timeout);
+    if (newsRequest === request) {
+      newsRequest = null;
+      loadingState.style.display = "none";
+      refreshBtn.disabled = false;
+      startCountdown();
+    }
   }
 }
 
@@ -180,18 +228,25 @@ navButtons.forEach(button => {
     navButtons.forEach(btn => btn.classList.remove("active"));
     button.classList.add("active");
     const category = button.getAttribute("data-category");
-    if (category === "saved") displayReadingList();
-    else if (category) fetchNews(category);
+    if (category === "saved") {
+      newsRequest?.abort();
+      newsRequest = null;
+      clearInterval(timerId);
+      currentCategory = "saved";
+      refreshBtn.disabled = true;
+      countdownEl.textContent = "paused";
+      refreshMessage.textContent = "";
+      lastCheckEl.textContent = "Reading list";
+      loadingState.style.display = "none";
+      errorState.style.display = "none";
+      displayReadingList();
+    } else if (category) {
+      fetchNews(category);
+    }
   });
 });
 
-const refreshBtn = document.getElementById('refresh-now');
-if (refreshBtn) {
-    refreshBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        fetchNews(currentCategory);
-    });
-}
+refreshBtn.addEventListener("click", () => fetchNews(currentCategory));
 
 function displayReadingList() {
   if (!articlesGrid) return;
