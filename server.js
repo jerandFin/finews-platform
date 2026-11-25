@@ -74,7 +74,7 @@ app.get("/api/news", async (req, res) => {
 
     if (apiKey) {
         try {
-            const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&apiKey=${apiKey}`);
+            const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&category=${category}&pageSize=50&apiKey=${apiKey}`);
             const data = await response.json();
             
             // If NewsAPI responds successfully with articles
