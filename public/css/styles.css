@@ -34,6 +34,10 @@ body {
   align-items: center;
 }
 
+.header-date {
+  color: #93c5fd;
+}
+
 .header-brand {
   color: #ffffff;
 }
