@@ -2,6 +2,14 @@ name: FinNews Codex repair
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Operation to run
+        type: choice
+        options:
+          - smoke
+          - repair
+        default: smoke
   schedule:
     - cron: '17 8 * * 1'
   workflow_run:
@@ -9,69 +17,149 @@ on:
     types: [completed]
     branches: [main]
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
-  group: finnews-autofix
+  group: finnews-codex-repair
   cancel-in-progress: false
 
 jobs:
-  repair:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'failure'
+  propose:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (vars.FINNEWS_CODEX_ENABLED == 'true' ||
+       (github.event_name == 'workflow_dispatch' && inputs.mode == 'smoke')) &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'failure' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_sha == github.sha))
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     steps:
-      - name: Check out trusted default branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: main
-          fetch-depth: 0
+          ref: ${{ github.sha }}
           persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Create a harmless smoke-test change
+        if: inputs.mode == 'smoke'
+        run: printf '\n// FinNews draft publisher smoke test. Close this pull request.\n' >> tests/api.test.js
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        if: inputs.mode != 'smoke'
         with:
           node-version: '22'
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Codex diagnosis and bounded repair
-        uses: openai/codex-action@v1
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          permission-profile: ":workspace"
-          prompt-file: .github/codex/repair.md
-          output-file: codex-report.md
-
-      - name: Exclude agent report from proposed source changes
-        run: rm -f codex-report.md
-
-      - name: Reject changes to automation and security control files
-        shell: bash
+          package-manager-cache: false
+      - name: Install locked dependencies
+        if: inputs.mode != 'smoke'
         run: |
-          changed="$( { git diff --name-only; git ls-files --others --exclude-standard; } | sort -u )"
-          printf 'Modified files:\n%s\n' "$changed"
-          if printf '%s\n' "$changed" | grep -Eq '^\.github/|^AGENTS\.md$|^package-lock\.json$'; then
-            echo 'Codex attempted to change protected configuration; refusing to create PR.'
+          printf '\n/node_modules/\n' >> .git/info/exclude
+          npm ci --ignore-scripts
+      - name: Check diagnosis credentials are configured
+        if: inputs.mode != 'smoke'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [[ -z "$OPENAI_API_KEY" ]]; then
+            echo 'Configure the OPENAI_API_KEY Actions secret before running repair mode.' >&2
             exit 1
           fi
-
-      - name: Open draft repair pull request
-        uses: peter-evans/create-pull-request@v7
+      - name: Diagnose and propose an application repair
+        if: inputs.mode != 'smoke'
+        uses: openai/codex-action@54e817e77767f274e7e9ceb9da755fb5c62ce25d # v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          branch: codex/automated-repairs
-          delete-branch: true
-          draft: true
-          title: "chore: Codex-proposed FinNews repairs"
-          commit-message: "chore: propose bounded Codex repairs"
-          body: |
-            Automated Codex repair proposal. No deployment or auto-merge is enabled.
-            Review the changed files, CI evidence, security implications and any
-            behaviour changes. A human must explicitly approve and merge.
-            If no changes were needed, this workflow creates no pull request.
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-version: '0.172.0'
+          safety-strategy: drop-sudo
+          permission-profile: ':workspace'
+          prompt-file: .github/codex/repair.md
+      - name: Package proposed changes
+        id: patch
+        shell: bash
+        run: |
+          git add -A
+          .github/codex/check-patch.py "$GITHUB_SHA"
+          if git diff --cached --quiet "$GITHUB_SHA"; then
+            echo 'No changes to propose.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            git diff --cached --binary --no-ext-diff --no-textconv "$GITHUB_SHA" > "$RUNNER_TEMP/repair.patch"
+            test "$(wc -c < "$RUNNER_TEMP/repair.patch")" -le 131072
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        id: upload
+        if: steps.patch.outputs.changed == 'true'
+        with:
+          name: finnews-repair
+          path: ${{ runner.temp }}/repair.patch
+          overwrite: true
+          if-no-files-found: error
+          retention-days: 1
+
+  verify:
+    needs: propose
+    if: needs.propose.outputs.artifact-id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          artifact-ids: ${{ needs.propose.outputs.artifact-id }}
+          path: ${{ runner.temp }}/finnews-repair
+      - name: Apply and check the proposed patch
+        run: |
+          git apply --index "$RUNNER_TEMP/finnews-repair/repair.patch"
+          .github/codex/check-patch.py "$GITHUB_SHA"
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Verify proposed code
+        run: |
+          npm ci --ignore-scripts
+          node --check server.js
+          node --check public/js/app.js
+          npm test
+          npm audit --audit-level=high
+
+  publish:
+    needs: [propose, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          artifact-ids: ${{ needs.propose.outputs.artifact-id }}
+          path: ${{ runner.temp }}/finnews-repair
+      - name: Stage the patch without executing proposed code
+        run: |
+          patch="$RUNNER_TEMP/finnews-repair/repair.patch"
+          test -f "$patch" && test ! -L "$patch"
+          test "$(wc -c < "$patch")" -le 131072
+          git apply --cached "$patch"
+          .github/codex/check-patch.py "$GITHUB_SHA"
+          if git diff --cached --quiet "$GITHUB_SHA"; then
+            echo 'Expected a non-empty repair patch.' >&2
+            exit 1
+          fi
+      - name: Publish and verify a draft pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode || 'repair' }}
+        run: bash .github/codex/publish-draft.sh
