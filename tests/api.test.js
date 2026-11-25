@@ -2,6 +2,7 @@ const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const net = require('node:net');
+const { gzipSync } = require('node:zlib');
 
 let server;
 let baseUrl;
@@ -76,6 +77,16 @@ test('quiz fallback contains three usable questions', async () => {
     assert.equal(item.options.length, 4);
     assert.ok(item.options.includes(item.correctAnswer));
   }
+});
+
+test('quiz endpoint accepts a gzip-compressed JSON request', async () => {
+  const response = await fetch(`${baseUrl}/api/quiz?difficulty=medium`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Encoding': 'gzip' },
+    body: gzipSync('{}')
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).length, 3);
 });
 
 test('unknown API route returns 404', async () => {
