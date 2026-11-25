@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const practiceQuiz = require('./quiz-practice');
 const app = express();
 
 app.use(express.json());
@@ -59,11 +60,10 @@ async function fetchLiveNewsHeadlines(category = 'business') {
                     .map(a => `- ${a.title}: ${a.description || ''}`);
             }
         } catch (err) {
-            console.warn("Live News API fetch failed; utilizing server fallback headlines.");
+            console.warn("Live News API fetch failed for quiz generation.");
         }
     }
-    // Fallback headline strings for AI prompt
-    return fallbackArticles.map(a => `- ${a.title}: ${a.description}`);
+    return [];
 }
 
 // --- NEWS FEED API ENDPOINT (For Frontend Web Display) ---
@@ -200,96 +200,82 @@ Return ONLY a valid JSON array like this:
     }
 }
 
-// --- FALLBACK QUIZ MATRIX ---
-const fallbackMatrixPool = [
-    {
-        question: "How do unexpected interest rate changes by central banks typically impact corporate borrowing?",
-        options: [
-            "Higher rates increase debt service costs, reducing profit margins.",
-            "Lower rates instantly halt all consumer retail purchasing.",
-            "Rate shifts have zero effect on corporate balance sheets.",
-            "Bond prices rise linearly whenever short-term rates increase."
-        ],
-        correctAnswer: "Higher rates increase debt service costs, reducing profit margins."
-    },
-    {
-        question: "When energy commodity supply faces unexpected international sanctions, what is the primary market result?",
-        options: [
-            "Global industrial input costs rise, driving inflationary pressures.",
-            "Retail inflation drops to zero across all consumer markets.",
-            "Equities in heavy manufacturing gain value automatically.",
-            "Foreign exchange trading stops across all global markets."
-        ],
-        correctAnswer: "Global industrial input costs rise, driving inflationary pressures."
-    },
-    {
-        question: "What does an inverted yield curve historically signal to financial markets?",
-        options: [
-            "An increased market expectation of an impending economic slowdown.",
-            "Guaranteed immediate expansion in private equity valuations.",
-            "A drop in foreign central bank treasury allocations.",
-            "Instant stabilization of foreign exchange rates."
-        ],
-        correctAnswer: "An increased market expectation of an impending economic slowdown."
-    },
-    {
-        question: "When a nation's central bank engages in Quantitative Easing (QE), what is the direct objective?",
-        options: [
-            "Inject liquidity into commercial banks to lower long-term interest rates.",
-            "Directly increase tax rates on large financial institutions.",
-            "Decrease the overall national debt held by private investors.",
-            "Freeze international currency conversion rates indefinitely."
-        ],
-        correctAnswer: "Inject liquidity into commercial banks to lower long-term interest rates."
-    }
-];
+const QUIZ_SIZE = 3;
+const QUIZ_HISTORY_SIZE = 9;
 
-function getRandomFallbackQuestions(pool, count = 3) {
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
+function shuffled(items) {
+    const result = [...items];
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
 }
 
-// --- LIVE AI QUIZ ROUTE ---
+function questionKey(question) {
+    return question.toLowerCase().replace(/[\p{P}\s]+/gu, ' ').trim();
+}
+
+function validateQuiz(questions, recent) {
+    if (questions?.length !== QUIZ_SIZE) return null;
+
+    const seen = new Set(recent);
+    for (const item of questions) {
+        if (typeof item?.question !== 'string' || !item.question.trim() || item.question.length > 500 ||
+            !Array.isArray(item.options) || item.options.length !== 4 ||
+            item.options.some(option => typeof option !== 'string' || !option.trim()) ||
+            new Set(item.options.map(option => option.trim().toLowerCase())).size !== 4 ||
+            !item.options.includes(item.correctAnswer)) {
+            return null;
+        }
+
+        const key = questionKey(item.question);
+        if (seen.has(key)) return null;
+        seen.add(key);
+    }
+    return questions;
+}
+
+function selectPracticeQuiz(difficulty, recent) {
+    const pool = practiceQuiz[difficulty];
+    const recentRanks = new Map(recent.map((key, index) => [key, index]));
+    const unseen = pool.filter(item => !recentRanks.has(questionKey(item.question)));
+    const seen = pool.filter(item => recentRanks.has(questionKey(item.question)))
+        .sort((a, b) => recentRanks.get(questionKey(a.question)) - recentRanks.get(questionKey(b.question)));
+    return [...shuffled(unseen), ...seen].slice(0, QUIZ_SIZE);
+}
+
 app.post("/api/quiz", async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    
-    try {
-        const difficulty = req.query.difficulty || 'medium';
+
+    const requestedDifficulty = req.query.difficulty;
+    const difficulty = typeof requestedDifficulty === 'string' && Object.hasOwn(practiceQuiz, requestedDifficulty)
+        ? requestedDifficulty : 'medium';
+    const history = req.body?.recentQuestions;
+    const recent = Array.isArray(history)
+        ? history.slice(-QUIZ_HISTORY_SIZE)
+            .filter(question => typeof question === 'string' && question.length <= 500)
+            .map(questionKey)
+        : [];
+
+    let questions = null;
+    if (process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY) {
         const headlines = await fetchLiveNewsHeadlines('business');
-        
-        let quizQuestions = null;
-
         if (headlines.length > 0) {
-            // 1. Primary Engine: Gemini API
-            if (process.env.GEMINI_API_KEY) {
-                quizQuestions = await generateQuizWithGemini(headlines, difficulty);
-            }
-
-            // 2. Secondary Engine: OpenRouter AI Fallback
-            if ((!quizQuestions || !Array.isArray(quizQuestions) || quizQuestions.length === 0) && process.env.OPENROUTER_API_KEY) {
-                console.log("Routing quiz request to OpenRouter fallback AI...");
-                quizQuestions = await generateQuizWithOpenRouter(headlines, difficulty);
+            questions = validateQuiz(await generateQuizWithGemini(headlines, difficulty), recent);
+            if (!questions) {
+                questions = validateQuiz(await generateQuizWithOpenRouter(headlines, difficulty), recent);
             }
         }
-
-        // 3. System Guard: Randomized Offline Fallback Pool
-        if (!quizQuestions || !Array.isArray(quizQuestions) || quizQuestions.length === 0) {
-            console.log("All AI models unavailable. Delivering randomized offline question matrix.");
-            quizQuestions = getRandomFallbackQuestions(fallbackMatrixPool, 3);
-        }
-
-        const batch = quizQuestions.map((q, idx) => ({
-            id: `news-ai-${Date.now()}-${idx}`,
-            question: q.question,
-            options: [...q.options].sort(() => Math.random() - 0.5),
-            correctAnswer: q.correctAnswer
-        }));
-
-        res.json(batch);
-    } catch (e) {
-        console.error("Quiz API Route Error:", e);
-        res.json(getRandomFallbackQuestions(fallbackMatrixPool, 3));
     }
+
+    res.setHeader('X-Quiz-Source', questions ? 'news' : 'practice');
+    res.json((questions || selectPracticeQuiz(difficulty, recent)).map((item, index) => ({
+        id: `quiz-${Date.now()}-${index}`,
+        question: item.question,
+        options: shuffled(item.options),
+        correctAnswer: item.correctAnswer
+    })));
 });
 
 // --- ROUTING ---
