@@ -41,6 +41,7 @@
             <button id="gen-btn" class="gen-btn">Generate Fresh Quiz Batch</button>
         </div>
 
+        <p id="quiz-status" role="status"></p>
         <div id="quiz-wrapper"></div>
     </div>
 
@@ -48,25 +49,36 @@
         const btn = document.getElementById('gen-btn');
         const wrapper = document.getElementById('quiz-wrapper');
         const difficultySelector = document.getElementById('difficulty-level');
+        const quizStatus = document.getElementById('quiz-status');
+        const recentByLevel = new Map();
 
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
             
             const level = difficultySelector.value;
-            wrapper.innerHTML = "<p style='color: #64748b; font-style: italic;'>Querying active liquidity models...</p>";
+            btn.disabled = true;
+            difficultySelector.disabled = true;
+            quizStatus.textContent = "Loading questions…";
             
             try {
-                // (D) Pass difficulty choice alongside cache-busting timestamp parameters
-                const res = await fetch(`/api/quiz?difficulty=${level}&t=${Date.now()}`, { method: 'POST' });
-                if (!res.ok) throw new Error("Server transmission error");
-                
-                const data = await res.json();
-                wrapper.innerHTML = ""; 
+                const recentQuestions = recentByLevel.get(level) || [];
+                const res = await fetch(`/api/quiz?difficulty=${level}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ recentQuestions })
+                });
+                if (!res.ok) throw new Error("Quiz request failed");
 
-                if(data.length === 0) {
-                    wrapper.innerHTML = "<p style='color: #64748b;'>All unique combinations for this level completed. Swap levels or refresh shortly.</p>";
-                    return;
-                }
+                const data = await res.json();
+                const currentQuestions = data.map(item => item.question);
+                recentByLevel.set(level, [
+                    ...recentQuestions.filter(question => !currentQuestions.includes(question)),
+                    ...currentQuestions
+                ].slice(-9));
+                wrapper.replaceChildren();
+                quizStatus.textContent = res.headers.get('X-Quiz-Source') === 'practice'
+                    ? "Practice questions"
+                    : "News-based questions";
 
                 data.forEach((q, i) => {
                     const card = document.createElement('div');
@@ -74,7 +86,9 @@
                     
                     const questionText = document.createElement('p');
                     questionText.className = 'quiz-question';
-                    questionText.innerHTML = `<strong>Q${i+1} [${level.toUpperCase()}]:</strong> ${q.question}`;
+                    const questionLabel = document.createElement('strong');
+                    questionLabel.textContent = `Q${i + 1} [${level.toUpperCase()}]: `;
+                    questionText.append(questionLabel, q.question);
                     card.appendChild(questionText);
 
                     q.options.forEach(opt => {
@@ -107,10 +121,11 @@
 
                     wrapper.appendChild(card);
                 });
-            } catch (err) {
-                // (A) Render protection fallback layout states
-                wrapper.innerHTML = "<p style='color: #ef4444;'>Unable to retrieve active quiz pools. Check server dashboard configuration variables.</p>";
-                console.error("Safely captured error execution:", err);
+            } catch {
+                quizStatus.textContent = "Unable to load questions. Please try again.";
+            } finally {
+                btn.disabled = false;
+                difficultySelector.disabled = false;
             }
         });
     </script>
