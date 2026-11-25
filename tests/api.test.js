@@ -60,6 +60,7 @@ test('news endpoint responds with structurally valid articles when no external k
   const response = await fetch(`${baseUrl}/api/news?category=business`);
   assert.equal(response.status, 200);
   const data = await response.json();
+  assert.equal(data.feedStatus, "fallback");
   assert.ok(Array.isArray(data.articles));
   for (const article of data.articles) {
     assert.equal(typeof article.title, 'string');
