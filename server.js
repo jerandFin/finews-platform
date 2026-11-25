@@ -87,7 +87,7 @@ app.get("/api/news", async (req, res) => {
     }
 
     // System Guard: Deliver Fallback News Feed so UI never stays empty
-    res.status(200).json({ status: "ok", articles: fallbackArticles });
+    res.status(200).json({ status: "ok", feedStatus: "fallback", articles: fallbackArticles });
 });
 
 // Helper: Safely parse JSON string returned by LLMs (strips markdown code blocks)
